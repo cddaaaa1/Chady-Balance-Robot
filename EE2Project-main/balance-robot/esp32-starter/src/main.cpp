@@ -5,54 +5,56 @@
 #include <step.h>
 
 // The Stepper pins
-#define STEPPER1_DIR_PIN 16   //Arduino D9
-#define STEPPER1_STEP_PIN 17  //Arduino D8
-#define STEPPER2_DIR_PIN 4    //Arduino D11
-#define STEPPER2_STEP_PIN 14  //Arduino D10
-#define STEPPER_EN 15         //Arduino D12
+#define STEPPER1_DIR_PIN 16  // Arduino D9
+#define STEPPER1_STEP_PIN 17 // Arduino D8
+#define STEPPER2_DIR_PIN 4   // Arduino D11
+#define STEPPER2_STEP_PIN 14 // Arduino D10
+#define STEPPER_EN 15        // Arduino D12
 
 // Diagnostic pin for oscilloscope
-#define TOGGLE_PIN  32        //Arduino A4
+#define TOGGLE_PIN 32 // Arduino A4
 
 const int PRINT_INTERVAL = 500;
 const int LOOP_INTERVAL = 10;
-const int  STEPPER_INTERVAL_US = 20;
+const int STEPPER_INTERVAL_US = 20;
 
-const float kx = 20.0;
+const float kp = 50;  // proportional gain
+const float kd = 0.0; // differential gain
 
-//Global objects
+// Global objects
 ESP32Timer ITimer(3);
-Adafruit_MPU6050 mpu;         //Default pins for I2C are SCL: IO22/Arduino D3, SDA: IO21/Arduino D4
+Adafruit_MPU6050 mpu; // Default pins for I2C are SCL: IO22/Arduino D3, SDA: IO21/Arduino D4
 
-step step1(STEPPER_INTERVAL_US,STEPPER1_STEP_PIN,STEPPER1_DIR_PIN );
-step step2(STEPPER_INTERVAL_US,STEPPER2_STEP_PIN,STEPPER2_DIR_PIN );
+step step1(STEPPER_INTERVAL_US, STEPPER1_STEP_PIN, STEPPER1_DIR_PIN);
+step step2(STEPPER_INTERVAL_US, STEPPER2_STEP_PIN, STEPPER2_DIR_PIN);
 
-
-//Interrupt Service Routine for motor update
-//Note: ESP32 doesn't support floating point calculations in an ISR
-bool TimerHandler(void * timerNo)
+// Interrupt Service Routine for motor update
+// Note: ESP32 doesn't support floating point calculations in an ISR
+bool TimerHandler(void *timerNo)
 {
   static bool toggle = false;
 
-  //Update the stepper motors
+  // Update the stepper motors
   step1.runStepper();
   step2.runStepper();
 
-  //Indicate that the ISR is running
-  digitalWrite(TOGGLE_PIN,toggle);  
+  // Indicate that the ISR is running
+  digitalWrite(TOGGLE_PIN, toggle);
   toggle = !toggle;
-	return true;
+  return true;
 }
 
 void setup()
 {
   Serial.begin(115200);
-  pinMode(TOGGLE_PIN,OUTPUT);
+  pinMode(TOGGLE_PIN, OUTPUT);
 
   // Try to initialize Accelerometer/Gyroscope
-  if (!mpu.begin()) {
+  if (!mpu.begin())
+  {
     Serial.println("Failed to find MPU6050 chip");
-    while (1) {
+    while (1)
+    {
       delay(10);
     }
   }
@@ -62,53 +64,64 @@ void setup()
   mpu.setGyroRange(MPU6050_RANGE_250_DEG);
   mpu.setFilterBandwidth(MPU6050_BAND_44_HZ);
 
-  //Attach motor update ISR to timer to run every STEPPER_INTERVAL_US μs
-  if (!ITimer.attachInterruptInterval(STEPPER_INTERVAL_US, TimerHandler)) {
+  // Attach motor update ISR to timer to run every STEPPER_INTERVAL_US μs
+  if (!ITimer.attachInterruptInterval(STEPPER_INTERVAL_US, TimerHandler))
+  {
     Serial.println("Failed to start stepper interrupt");
-    while (1) delay(10);
-    }
+    while (1)
+      delay(10);
+  }
   Serial.println("Initialised Interrupt for Stepper");
 
-  //Set motor acceleration values
-  step1.setAccelerationRad(10.0);
-  step2.setAccelerationRad(10.0);
+  step1.setAccelerationRad(2000.0);
+  step2.setAccelerationRad(2000.0);
 
-  //Enable the stepper motor drivers
-  pinMode(STEPPER_EN,OUTPUT);
+  // Enable the stepper motor drivers
+  pinMode(STEPPER_EN, OUTPUT);
   digitalWrite(STEPPER_EN, false);
-
 }
 
 void loop()
 {
-  //Static variables are initialised once and then the value is remembered betweeen subsequent calls to this function
-  static unsigned long printTimer = 0;  //time of the next print
-  static unsigned long loopTimer = 0;   //time of the next control update
-  static float tiltx = 0.0;             //current tilt angle
-  
-  //Run the control loop every LOOP_INTERVAL ms
-  if (millis() > loopTimer) {
+  // Static variables are initialised once and then the value is remembered betweeen subsequent calls to this function
+  static unsigned long printTimer = 0; // time of the next print
+  static unsigned long loopTimer = 0;  // time of the next control update
+  static float alpha = 0.98;           // Complementary filter coefficient, C in git hub page
+  static float bias = 0.09;            // degree when
+  static float theta = 0.0;            // current tilt angle, tiltx in orginal code
+  static float theta_a = 0.0;          // angle measured by accelerometer
+  static float theta_g = 0.0;          // angle measured by gyroscope
+
+  // Run the control loop   every LOOP_INTERVAL ms
+  if (millis() > loopTimer)
+  {
     loopTimer += LOOP_INTERVAL;
 
     // Fetch data from MPU6050
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
 
-    //Calculate Tilt using accelerometer and sin x = x approximation for a small tilt angle
-    tiltx = a.acceleration.z/9.67;
+    // Calculate the angle from accelerometer data
+    theta_a = atan(a.acceleration.z / sqrt(pow(a.acceleration.y, 2) + pow(a.acceleration.x, 2)));
 
-    //Set target motor speed proportional to tilt angle
-    //Note: this is for demonstrating accelerometer and motors - it won't work as a balance controller
-    step1.setTargetSpeedRad(tiltx*kx);
-    step2.setTargetSpeedRad(-tiltx*kx);
+    // Calculate the angle change from gyroscope data
+    theta_g = g.gyro.y * (LOOP_INTERVAL / 1000); // adjust dt into second
+
+    // Complementary filter to combine accelerometer and gyroscope data
+    theta = (alpha * (theta + theta_g)) + ((1 - alpha) * theta_a);
+
+    // Set target motor speed proportional to tilt angle
+    step1.setTargetSpeedRad((theta - bias) * kp);
+    step2.setTargetSpeedRad((theta - bias) * kp);
   }
-  
-  //Print updates every PRINT_INTERVAL ms
-  if (millis() > printTimer) {
+
+  // Print updates every PRINT_INTERVAL ms
+  if (millis() > printTimer)
+  {
     printTimer += PRINT_INTERVAL;
-    Serial.print(tiltx*1000);
+    Serial.print(theta_a);
     Serial.print(' ');
-    Serial.print(step1.getSpeedRad());
+    Serial.print(theta);
     Serial.println();
   }
 }
