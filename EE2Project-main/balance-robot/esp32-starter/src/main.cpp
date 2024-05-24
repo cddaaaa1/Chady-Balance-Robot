@@ -18,8 +18,8 @@ const int PRINT_INTERVAL = 500;
 const int LOOP_INTERVAL = 10;
 const int STEPPER_INTERVAL_US = 20;
 
-const float kp = 50;  // proportional gain
-const float kd = 0.0; // differential gain
+const float kp = 4000; // proportional gain 25000
+const float kd = 150;  // differential gain
 
 // Global objects
 ESP32Timer ITimer(3);
@@ -73,8 +73,8 @@ void setup()
   }
   Serial.println("Initialised Interrupt for Stepper");
 
-  step1.setAccelerationRad(2000.0);
-  step2.setAccelerationRad(2000.0);
+  step1.setTargetSpeedRad(19);
+  step2.setTargetSpeedRad(19);
 
   // Enable the stepper motor drivers
   pinMode(STEPPER_EN, OUTPUT);
@@ -86,11 +86,16 @@ void loop()
   // Static variables are initialised once and then the value is remembered betweeen subsequent calls to this function
   static unsigned long printTimer = 0; // time of the next print
   static unsigned long loopTimer = 0;  // time of the next control update
-  static float alpha = 0.98;           // Complementary filter coefficient, C in git hub page
-  static float bias = 0.09;            // degree when
-  static float theta = 0.0;            // current tilt angle, tiltx in orginal code
-  static float theta_a = 0.0;          // angle measured by accelerometer
-  static float theta_g = 0.0;          // angle measured by gyroscope
+
+  // balance loop
+  static float alpha = 0.98;   // Complementary filter coefficient, C in git hub page
+  static float bias = 0.05;    // degree when
+  static float theta = 0.0;    // current tilt angle, tiltx in orginal code
+  static float theta_a = 0.0;  // angle measured by accelerometer
+  static float theta_g = 0.0;  // angle measured by gyroscope
+  static float Pd_input = 0.0; // input to the PID controller
+
+  // velocity loop
 
   // Run the control loop   every LOOP_INTERVAL ms
   if (millis() > loopTimer)
@@ -110,18 +115,29 @@ void loop()
     // Complementary filter to combine accelerometer and gyroscope data
     theta = (alpha * (theta + theta_g)) + ((1 - alpha) * theta_a);
 
-    // Set target motor speed proportional to tilt angle
-    step1.setTargetSpeedRad((theta - bias) * kp);
-    step2.setTargetSpeedRad((theta - bias) * kp);
-  }
+    Pd_input = (bias - theta) * kp - g.gyro.y * kd;
+    // Set target motor acceleration proportional to tilt angle
+    step1.setAccelerationRad(Pd_input);
+    step2.setAccelerationRad(Pd_input);
+    if (Pd_input > 0)
+    {
+      step1.setTargetSpeedRad(-15);
+      step2.setTargetSpeedRad(-15);
+    }
+    else
+    {
+      step1.setTargetSpeedRad(15);
+      step2.setTargetSpeedRad(15);
+    }
 
-  // Print updates every PRINT_INTERVAL ms
-  if (millis() > printTimer)
-  {
-    printTimer += PRINT_INTERVAL;
-    Serial.print(theta_a);
-    Serial.print(' ');
-    Serial.print(theta);
-    Serial.println();
+    // Print updates every PRINT_INTERVAL ms
+    if (millis() > printTimer)
+    {
+      printTimer += PRINT_INTERVAL;
+      Serial.print(theta_g);
+      Serial.print(' ');
+      Serial.print(theta);
+      Serial.println();
+    }
   }
 }
