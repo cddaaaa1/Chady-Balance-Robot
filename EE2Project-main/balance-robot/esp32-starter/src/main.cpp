@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Wire.h>
 #include <TimerInterrupt_Generic.h>
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
@@ -14,18 +15,23 @@
 // Diagnostic pin for oscilloscope
 #define TOGGLE_PIN 32 // Arduino A4
 
+// I2C pins
+#define I2C_SDA 18
+#define I2C_SCL 22
+
 const int PRINT_INTERVAL = 500;
 const int LOOP_INTERVAL = 10;
 const int STEPPER_INTERVAL_US = 20;
 
-const float kp = 300; // proportional gain 25000
+const float kp = 280; // proportional gain 25000
 const float kd = 200; // differential gain
 // const float ki = 20;
-const float velocity_kp = 0.01;
-const float velocity_ki = velocity_kp / 200;
+const float velocity_kp = 0.08;
+const float velocity_ki = 0.001;
 
 // Global objects
 ESP32Timer ITimer(3);
+TwoWire I2CMPU = TwoWire(0);
 Adafruit_MPU6050 mpu; // Default pins for I2C are SCL: IO22/Arduino D3, SDA: IO21/Arduino D4
 
 step step1(STEPPER_INTERVAL_US, STEPPER1_STEP_PIN, STEPPER1_DIR_PIN);
@@ -51,6 +57,7 @@ void setup()
 {
   Serial.begin(115200);
   pinMode(TOGGLE_PIN, OUTPUT);
+  I2CMPU.begin(I2C_SDA, I2C_SCL, 100000);
 
   // Try to initialize Accelerometer/Gyroscope
   if (!mpu.begin())
@@ -86,7 +93,7 @@ void setup()
 
 float titltAngle(sensors_event_t a, sensors_event_t g)
 {
-  static float alpha = 0.98;  // Complementary filter coefficient, C in git hub page
+  float alpha = 0.98;         // Complementary filter coefficient, C in git hub page
   static float theta = 0.0;   // current tilt angle, tiltx in orginal code
   static float theta_a = 0.0; // angle measured by accelerometer
   static float theta_g = 0.0; // angle measured by gyroscope
@@ -119,21 +126,12 @@ float veloctiy(float target_velocity, float step1_velocity, float step2_velocity
   static float output;
   static float velocity_err;
   static float velocity_err_last;
-  static float a = 0.8; // low pass filter coefficient
+  float a = 0.3; // low pass filter coefficient
   static float velocity_err_integ;
 
   velocity_err = target_velocity - (step1_velocity + step2_velocity) / 2;
   velocity_err = (1 - a) * velocity_err + a * velocity_err_last;
   velocity_err_last = velocity_err;
-  if (velocity_err < 4 && velocity_err > -4)
-  {
-    velocity_err_integ += velocity_err;
-    err = velocity_err_integ;
-  }
-  if (velocity_err_integ > 200)
-  {
-    velocity_err_integ = 200;
-  }
   output = velocity_kp * velocity_err + velocity_ki * velocity_err_integ;
   return output;
 }
