@@ -20,15 +20,17 @@ const int LOOP_INTERVAL = 10;
 const int STEPPER_INTERVAL_US = 20;
 
 // PID control gains
-const float vertical_kp = 280; // proportional gain 25000
-const float vertical_kd = 200; // differential gain
+// const float vertical_kp = 300; // proportional gain 25000
+// const float vertical_kd = 200; // differential gain
+const float vertical_kp = 0.0; // proportional gain 25000
+const float vertical_kd = 0.0; // differential gain
 const float velocity_kp = 0.08;
-const float velocity_ki = 0.001;
+const float velocity_ki = 0.00;
 const float turn_kp = 0.0;
 const float turn_kd = 0.0;
 
 // sensor data
-static float pitch = 0.0;
+static float pitch;
 
 // Motion target values
 static float target_velocity = 0.0;
@@ -61,7 +63,6 @@ void setup()
 {
   Serial.begin(115200);
   pinMode(TOGGLE_PIN, OUTPUT);
-  I2CMPU.begin(I2C_SDA, I2C_SCL, 100000);
 
   // Try to initialize Accelerometer/Gyroscope
   if (!mpu.begin())
@@ -123,6 +124,8 @@ float vertical(float bias, float gyro_y) // angle bias, current tilt angle, gyro
   return output;
 }
 
+static float err;
+
 float veloctiy(float step1_velocity, float step2_velocity)
 {
   static float output;
@@ -131,13 +134,14 @@ float veloctiy(float step1_velocity, float step2_velocity)
   float a = 0.8; // low pass filter coefficient
   static float velocity_err_integ;
 
-  velocity_err = (step1_velocity + step2_velocity) / 2 - target_velocity;
+  velocity_err = (step1_velocity + step2_velocity) - target_velocity;
   velocity_err = (1 - a) * velocity_err + a * velocity_err_last;
   velocity_err_last = velocity_err;
 
   if (velocity_err < 4 && velocity_err > -4) // only integrate when velocity error is small
   {
     velocity_err_integ += velocity_err;
+    err = velocity_err;
   }
   if (velocity_err_integ > 200) // limit the integral
   {
@@ -200,6 +204,7 @@ void loop()
     pitch = titltAngle(a, g);
 
     // stepper motor velocity
+    // velocity1 = step1.getSpeedRad();
     velocity1 = step1.getSpeedRad();
     velcoity2 = step2.getSpeedRad();
 
@@ -216,8 +221,8 @@ void loop()
     pwm_output = vertical_output + turn_output;
 
     // Set target motor acceleration proportional to tilt angle
-    step1.setAccelerationRad(vertical_output);
-    step2.setAccelerationRad(vertical_output);
+    step1.setAccelerationRad(100);
+    step2.setAccelerationRad(velocity_output);
     if (vertical_output > 0)
     {
       step1.setTargetSpeedRad(-18);
@@ -236,7 +241,7 @@ void loop()
     if (millis() > printTimer)
     {
       printTimer += PRINT_INTERVAL;
-      Serial.print("");
+      Serial.println(pitch);
     }
   }
 }
