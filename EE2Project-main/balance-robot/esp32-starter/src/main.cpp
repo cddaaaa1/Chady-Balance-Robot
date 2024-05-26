@@ -15,23 +15,27 @@
 // Diagnostic pin for oscilloscope
 #define TOGGLE_PIN 32 // Arduino A4
 
-// I2C pins
-#define I2C_SDA 18
-#define I2C_SCL 22
-
 const int PRINT_INTERVAL = 500;
 const int LOOP_INTERVAL = 10;
 const int STEPPER_INTERVAL_US = 20;
 
-const float kp = 280; // proportional gain 25000
-const float kd = 200; // differential gain
-// const float ki = 20;
+// PID control gains
+const float vertical_kp = 280; // proportional gain 25000
+const float vertical_kd = 200; // differential gain
 const float velocity_kp = 0.08;
 const float velocity_ki = 0.001;
+const float turn_kp = 0.0;
+const float turn_kd = 0.0;
+
+// sensor data
+static float pitch = 0.0;
+
+// Motion target values
+static float target_velocity = 0.0;
+static float target_angle = 0.0;
 
 // Global objects
 ESP32Timer ITimer(3);
-TwoWire I2CMPU = TwoWire(0);
 Adafruit_MPU6050 mpu; // Default pins for I2C are SCL: IO22/Arduino D3, SDA: IO21/Arduino D4
 
 step step1(STEPPER_INTERVAL_US, STEPPER1_STEP_PIN, STEPPER1_DIR_PIN);
@@ -110,29 +114,56 @@ float titltAngle(sensors_event_t a, sensors_event_t g)
   return theta;
 }
 
-float vertical(float bias, float angle, float gyro_y) // angle bias, current tilt angle, gyro_y
+float vertical(float bias, float gyro_y) // angle bias, current tilt angle, gyro_y
 {
   static float output = 0.0;
-  // static float error_integral;
-  // error_integral += (bias-angle);
 
-  output = (bias - angle) * kp - gyro_y * kd;
+  output = (bias - pitch) * vertical_kp - gyro_y * vertical_kd;
 
   return output;
 }
-float err;
-float veloctiy(float target_velocity, float step1_velocity, float step2_velocity)
+
+float veloctiy(float step1_velocity, float step2_velocity)
 {
   static float output;
   static float velocity_err;
   static float velocity_err_last;
-  float a = 0.3; // low pass filter coefficient
+  float a = 0.8; // low pass filter coefficient
   static float velocity_err_integ;
 
-  velocity_err = target_velocity - (step1_velocity + step2_velocity) / 2;
+  velocity_err = (step1_velocity + step2_velocity) / 2 - target_velocity;
   velocity_err = (1 - a) * velocity_err + a * velocity_err_last;
   velocity_err_last = velocity_err;
+
+  if (velocity_err < 4 && velocity_err > -4) // only integrate when velocity error is small
+  {
+    velocity_err_integ += velocity_err;
+  }
+  if (velocity_err_integ > 200) // limit the integral
+  {
+    velocity_err_integ = 200;
+  }
+  if (pitch > 1.5 || pitch < -1.5) // clear the integral when robot falls
+  {
+    velocity_err_integ = 0;
+    Serial.println("fall detected!");
+  }
   output = velocity_kp * velocity_err + velocity_ki * velocity_err_integ;
+  return output;
+}
+
+float turn(float gyro_z)
+{
+  static float output;
+  if (target_angle == 0) // suppresss the turn
+  {
+    output = turn_kd * gyro_z;
+  }
+  else // turn to target angle
+  {
+    output = turn_kp * target_angle;
+  }
+
   return output;
 }
 
@@ -142,15 +173,21 @@ void loop()
   static unsigned long printTimer = 0; // time of the next print
   static unsigned long loopTimer = 0;  // time of the next control update
 
-  static float bias = 0.05; // degree when
+  static float bias = 0.05; // radis bias when robot is vertical
 
-  // vertical output
+  // vertical loop
   static float vertical_output;
 
   // velocity loop
   static float velocity1;
   static float velcoity2;
   static float velocity_output;
+
+  // turn loop
+  static float turn_output;
+
+  // PWM output
+  static float pwm_output;
 
   // Run the control loop   every LOOP_INTERVAL ms
   if (millis() > loopTimer)
@@ -160,11 +197,23 @@ void loop()
     // Fetch data from MPU6050
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
+    pitch = titltAngle(a, g);
+
+    // stepper motor velocity
+    velocity1 = step1.getSpeedRad();
+    velcoity2 = step2.getSpeedRad();
+
     // velocity loop
-    velocity_output = veloctiy(0, step1.getSpeedRad(), step2.getSpeedRad());
+    velocity_output = veloctiy(velocity1, velcoity2);
 
     // vertical loop
-    vertical_output = vertical(bias + velocity_output, titltAngle(a, g), g.gyro.y);
+    vertical_output = vertical(bias + velocity_output, g.gyro.y);
+
+    // turn loop
+    turn_output = turn(g.gyro.z);
+
+    // PWM output
+    pwm_output = vertical_output + turn_output;
 
     // Set target motor acceleration proportional to tilt angle
     step1.setAccelerationRad(vertical_output);
@@ -187,7 +236,7 @@ void loop()
     if (millis() > printTimer)
     {
       printTimer += PRINT_INTERVAL;
-      Serial.print(err);
+      Serial.print("");
     }
   }
 }
