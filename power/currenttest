@@ -1,0 +1,61 @@
+#define VDM_PIN 25 // Arduino A2 for motor differential
+#define Vmotor_PIN 24 // Arduino A3 for motor voltage 
+#define VDL_PIN  26 // Arduino A4 for logic differential 
+#define Vlogic_PIN 27 // Arduino A5 for logic voltage 
+
+#define MAX_ADC 3.3 
+#define MAX_12bits 4095
+
+const float R = 0.01; // 10mΩ resistor 
+const float G_motor = 10.0; // Gain of motor
+const float G_logic = 10.0; // Gain of logic 
+const float PD_motor = 6.0; // Potential divider of Vm
+const float PD_Vb = 6.0; // Potential divider of Vb
+const float PD_logic = 2.0; // Potential divider of Vlogic 
+
+void setup() {
+  Serial.begin(115200);
+  analogReadResolution(12);
+}
+
+void loop() {
+  // Read differential voltage with gain, and convert to unity differential voltage
+  int ADC_VDM = analogRead(VDM_PIN);
+  float VDM = (ADC_VDM / (float)MAX_12bits) * (MAX_ADC / G_motor);
+
+  int ADC_VM = analogRead(Vmotor_PIN); 
+  float VM = (ADC_VM / (float)MAX_12bits) * (MAX_ADC * PD_motor);
+  float IM = VDM / R; // Motor current
+
+  float PM = IM * VM; // Motor power
+
+  // Read logic differential voltage with gain, and convert to unity differential voltage
+  int ADC_VDL = analogRead(VDL_PIN);
+  float VDL = (ADC_VDL / (float)MAX_12bits) * (MAX_ADC / G_logic);
+
+  int ADC_VL = analogRead(Vlogic_PIN);
+  float VL = (ADC_VL / (float)MAX_12bits) * (MAX_ADC * PD_logic);
+  float IL = VDL / R; // Logic current
+
+  float PL = IL * VL; // Logic power
+
+  // Print motor measurements
+  Serial.print("Motor Current: ");
+  Serial.print(IM);
+  Serial.print(" A, Motor Voltage: ");
+  Serial.print(VM);
+  Serial.print(" V, Motor Power: ");
+  Serial.print(PM);
+  Serial.println(" W");
+
+  // Print logic measurements
+  Serial.print("Logic Current: ");
+  Serial.print(IL);
+  Serial.print(" A, Logic Voltage: ");
+  Serial.print(VL);
+  Serial.print(" V, Logic Power: ");
+  Serial.print(PL);
+  Serial.println(" W");
+
+  delay(1000); // Delay for 1 second before next measurement
+}
