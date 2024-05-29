@@ -20,14 +20,12 @@ const int LOOP_INTERVAL = 10;
 const int STEPPER_INTERVAL_US = 20;
 
 // PID control gains
-// const float vertical_kp = 300; // proportional gain 25000
-// const float vertical_kd = 200; // differential gain
-const float vertical_kp = 0.0; // proportional gain 25000
-const float vertical_kd = 0.0; // differential gain
-const float velocity_kp = 0.08;
-const float velocity_ki = 0.00;
+const float vertical_kp = 300; // proportional gain 300
+const float vertical_kd = 200; // differential gain 200
+const float velocity_kp = 0.015;
+const float velocity_ki = velocity_kp / 200;
 const float turn_kp = 0.0;
-const float turn_kd = 0.0;
+const float turn_kd = -0.1;
 
 // sensor data
 static float pitch;
@@ -131,21 +129,25 @@ float veloctiy(float step1_velocity, float step2_velocity)
   static float output;
   static float velocity_err;
   static float velocity_err_last;
-  float a = 0.8; // low pass filter coefficient
+  float a = 0.5; // low pass filter coefficient
   static float velocity_err_integ;
 
-  velocity_err = (step1_velocity + step2_velocity) - target_velocity;
+  velocity_err = target_velocity - (step1_velocity + step2_velocity) / 2;
   velocity_err = (1 - a) * velocity_err + a * velocity_err_last;
   velocity_err_last = velocity_err;
 
-  if (velocity_err < 4 && velocity_err > -4) // only integrate when velocity error is small
+  if (velocity_err < 5 && velocity_err > -5) // only integrate when velocity error is small
   {
     velocity_err_integ += velocity_err;
-    err = velocity_err;
+    err = velocity_err_integ;
   }
-  if (velocity_err_integ > 200) // limit the integral
+  if (velocity_err_integ > 20) // limit the integral
   {
-    velocity_err_integ = 200;
+    velocity_err_integ = 20;
+  }
+  if (velocity_err_integ < -20)
+  {
+    velocity_err_integ = 20;
   }
   if (pitch > 1.5 || pitch < -1.5) // clear the integral when robot falls
   {
@@ -156,12 +158,12 @@ float veloctiy(float step1_velocity, float step2_velocity)
   return output;
 }
 
-float turn(float gyro_z)
+float turn(float gyro_x)
 {
   static float output;
-  if (target_angle == 0) // suppresss the turn
+  if (target_angle == 0.0) // suppresss the turn
   {
-    output = turn_kd * gyro_z;
+    output = turn_kd * gyro_x;
   }
   else // turn to target angle
   {
@@ -191,7 +193,8 @@ void loop()
   static float turn_output;
 
   // PWM output
-  static float pwm_output;
+  static float acc_input1;
+  static float acc_input2;
 
   // Run the control loop   every LOOP_INTERVAL ms
   if (millis() > loopTimer)
@@ -204,7 +207,6 @@ void loop()
     pitch = titltAngle(a, g);
 
     // stepper motor velocity
-    // velocity1 = step1.getSpeedRad();
     velocity1 = step1.getSpeedRad();
     velcoity2 = step2.getSpeedRad();
 
@@ -215,14 +217,15 @@ void loop()
     vertical_output = vertical(bias + velocity_output, g.gyro.y);
 
     // turn loop
-    turn_output = turn(g.gyro.z);
+    turn_output = turn(g.gyro.x);
 
-    // PWM output
-    pwm_output = vertical_output + turn_output;
+    // acceleration input
+    acc_input1 = vertical_output + turn_output;
+    acc_input2 = vertical_output - turn_output;
 
     // Set target motor acceleration proportional to tilt angle
-    step1.setAccelerationRad(100);
-    step2.setAccelerationRad(velocity_output);
+    step1.setAccelerationRad(vertical_output);
+    step2.setAccelerationRad(vertical_output);
     if (vertical_output > 0)
     {
       step1.setTargetSpeedRad(-18);
@@ -241,7 +244,8 @@ void loop()
     if (millis() > printTimer)
     {
       printTimer += PRINT_INTERVAL;
-      Serial.println(pitch);
+      Serial.print("err:");
+      Serial.println(err);
     }
   }
 }
