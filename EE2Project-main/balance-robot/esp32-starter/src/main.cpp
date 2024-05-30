@@ -20,18 +20,23 @@ const int LOOP_INTERVAL = 10;
 const int STEPPER_INTERVAL_US = 20;
 
 // PID control gains
-const float vertical_kp = 300; // proportional gain 300
-const float vertical_kd = 200; // differential gain 200
-const float velocity_kp = 0.015;
+const float vertical_kp = 450;   // proportional gain 450
+const float vertical_kd = 450;   // differential gain 450
+const float velocity_kp = 0.075; // proportional gain 0.075
 const float velocity_ki = velocity_kp / 200;
 const float turn_kp = 0.0;
-const float turn_kd = -0.1;
+const float turn_kd = 0.0;
+const float turn_speed = 0.0;
+const float turn_direction = 0.0; // either +-1 based on direction
 
-// sensor data
+// vertical loop
 static float pitch;
+static float velocity_input;
+// turn loop
+static float yaw;
 
 // Motion target values
-static float target_velocity = 0.0;
+static float target_velocity = 1.3;
 static float target_angle = 0.0;
 
 // Global objects
@@ -132,7 +137,7 @@ float veloctiy(float step1_velocity, float step2_velocity)
   float a = 0.5; // low pass filter coefficient
   static float velocity_err_integ;
 
-  velocity_err = target_velocity - (step1_velocity + step2_velocity) / 2;
+  velocity_err = velocity_input - (step1_velocity + step2_velocity) / 2;
   velocity_err = (1 - a) * velocity_err + a * velocity_err_last;
   velocity_err_last = velocity_err;
 
@@ -149,10 +154,9 @@ float veloctiy(float step1_velocity, float step2_velocity)
   {
     velocity_err_integ = 20;
   }
-  if (pitch > 1.5 || pitch < -1.5) // clear the integral when robot falls
+  if (pitch > 0.5 || pitch < -0.5) // clear the integral when robot falls
   {
     velocity_err_integ = 0;
-    Serial.println("fall detected!");
   }
   output = velocity_kp * velocity_err + velocity_ki * velocity_err_integ;
   return output;
@@ -161,16 +165,34 @@ float veloctiy(float step1_velocity, float step2_velocity)
 float turn(float gyro_x)
 {
   static float output;
-  if (target_angle == 0.0) // suppresss the turn
+  static float turn_thresh = 50.0;
+  if (target_angle == 0.0)
   {
-    output = turn_kd * gyro_x;
+    yaw = gyro_x * LOOP_INTERVAL;
+
+    if (yaw > turn_thresh)
+    {
+      yaw = turn_thresh;
+    }
+    if (yaw < -turn_thresh)
+    {
+      yaw = -turn_thresh;
+    }
+    output = -yaw * turn_kp - gyro_x * turn_kd;
+    if (yaw > 5)
+    {
+      return output;
+    }
+    else
+    {
+      return 0;
+    }
   }
   else // turn to target angle
   {
-    output = turn_kp * target_angle;
+    output = turn_speed * turn_direction;
+    return output;
   }
-
-  return output;
 }
 
 void loop()
@@ -179,7 +201,7 @@ void loop()
   static unsigned long printTimer = 0; // time of the next print
   static unsigned long loopTimer = 0;  // time of the next control update
 
-  static float bias = 0.05; // radis bias when robot is vertical
+  static float bias = 0.08; // radis bias when robot is vertical
 
   // vertical loop
   static float vertical_output;
@@ -196,7 +218,7 @@ void loop()
   static float acc_input1;
   static float acc_input2;
 
-  // Run the control loop   every LOOP_INTERVAL ms
+  // Run the control loop every LOOP_INTERVAL ms
   if (millis() > loopTimer)
   {
     loopTimer += LOOP_INTERVAL;
@@ -210,42 +232,57 @@ void loop()
     velocity1 = step1.getSpeedRad();
     velcoity2 = step2.getSpeedRad();
 
-    // velocity loop
-    velocity_output = veloctiy(velocity1, velcoity2);
-
-    // vertical loop
-    vertical_output = vertical(bias + velocity_output, g.gyro.y);
-
     // turn loop
     turn_output = turn(g.gyro.x);
+
+    // velocity loop
+    if (turn_output)
+    {
+      velocity_input = 0.0;
+      velocity_output = veloctiy(velocity1, velcoity2);
+    }
+    else
+    {
+      velocity_input = target_velocity;
+      velocity_output = veloctiy(velocity1, velcoity2);
+    }
+    // vertical loop
+    vertical_output = vertical(bias + velocity_output, g.gyro.y);
 
     // acceleration input
     acc_input1 = vertical_output + turn_output;
     acc_input2 = vertical_output - turn_output;
 
     // Set target motor acceleration proportional to tilt angle
-    step1.setAccelerationRad(vertical_output);
-    step2.setAccelerationRad(vertical_output);
-    if (vertical_output > 0)
+    step1.setAccelerationRad(acc_input1);
+    step2.setAccelerationRad(acc_input2);
+    if (acc_input1 > 0 && acc_input2 > 0)
     {
       step1.setTargetSpeedRad(-18);
       step2.setTargetSpeedRad(-18);
     }
-    else
+    else if (acc_input1 < 0 && acc_input2 < 0)
     {
       step1.setTargetSpeedRad(18);
       step2.setTargetSpeedRad(18);
     }
-
-    velocity1 = step1.getSpeedRad();
-    velcoity2 = step2.getSpeedRad();
+    else if (acc_input1 > 0 && acc_input2 < 0)
+    {
+      step1.setTargetSpeedRad(-18);
+      step2.setTargetSpeedRad(18);
+    }
+    else if (acc_input1 < 0 && acc_input2 > 0)
+    {
+      step1.setTargetSpeedRad(18);
+      step2.setTargetSpeedRad(-18);
+    }
 
     // Print updates every PRINT_INTERVAL ms
     if (millis() > printTimer)
     {
       printTimer += PRINT_INTERVAL;
-      Serial.print("err:");
-      Serial.println(err);
+      Serial.print("pitch:");
+      Serial.println(pitch);
     }
   }
 }
