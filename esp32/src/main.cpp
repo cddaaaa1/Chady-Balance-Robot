@@ -1,5 +1,9 @@
 #include <WiFi.h>
 #include <WebServer.h>
+#include <Arduino.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <TimerInterrupt_Generic.h>
 #include "manual.h"
 #include "automatic.h"
 
@@ -12,6 +16,8 @@
 
 // Diagnostic pin for oscilloscope
 #define TOGGLE_PIN  32        //Arduino A4
+#define LOOP_INTERVAL_ms 10
+
 
 // Define motion flags
 bool isForward = false;
@@ -26,30 +32,69 @@ const char* password = "ctx20040510";
 // Initialize the web server on port 80
 WebServer server(80);
 
-enum Mode { AUTOMATIC, MANUAL };
+enum Mode { AUTOMATIC, MANUAL, STOP };
 Mode currentMode = MANUAL; // Default mode
+
+
+void resetStates() {
+    isForward = false;
+    isBackward = false;
+    isLeft = false;
+    isRight = false;
+}
+
+// void stopAutomaticOperations() {
+//     ITimer.detachInterrupt(); 
+//     Serial.println("Interrupts detached.");
+// }
+
+void switchToAutomatic() {
+    resetStates();  // Reset manual states
+    //stopAutomaticOperations();  // Stop any possibly lingering automatic operations
+    // delay(100);
+    currentMode = AUTOMATIC;
+    Serial.println("Switched to Automatic Mode");
+    //setupAutomatic();  // Re-initialize automatic mode settings, including re-attaching interrupts
+}
+
+void switchToManual() {
+    //stopAutomaticOperations();  // Ensure automatic operations are stopped
+    resetStates();  // Reset any automatic states if needed
+    currentMode = MANUAL;
+    Serial.println("Switched to Manual Mode");
+    setupManual();  // Re-initialize manual mode settings
+}
+
+void stopMoving() {
+    digitalWrite(STEPPER1_STEP_PIN, LOW);
+    digitalWrite(STEPPER2_STEP_PIN, LOW);
+    digitalWrite(STEPPER_EN, HIGH);  // Ensure motor drivers are disabled
+}
 
 void handleRoot() {
     if (server.hasArg("command")) {
-        String command = server.arg("command"); // Correctly using String
+        String command = server.arg("command");
         if (command == "switch_to_auto") {
-            currentMode = AUTOMATIC;
-            server.send(200, "text/plain", "Switched to Automatic Mode");
+            switchToAutomatic();
+            //currentMode = AUTOMATIC;
+            Serial.println("Switched to Automatic Mode2");
         } else if (command == "switch_to_manual") {
-            currentMode = MANUAL;
-            server.send(200, "text/plain", "Switched to Manual Mode");
+            switchToManual();
+            //currentMode = MANUAL;
+            Serial.println("Switched to Manual Mode");
+        } else if (command == "stop") {
+            currentMode = STOP;
+            stopMoving();
         } else {
-            // Assume handleManualCommand(command) and other functions also use String
             if (currentMode == MANUAL) {
                 handleManualCommand(command);
-            }
-            server.send(200, "text/plain", "Command received: " + command);
+            } // Consider else if for AUTOMATIC if needed
         }
+        server.send(200, "text/plain", "Command received: " + command);
     } else {
         server.send(200, "text/plain", "No command received");
     }
 }
-
 
 void setup() {
     Serial.begin(115200);
@@ -62,34 +107,70 @@ void setup() {
     Serial.print("IP Address: ");
     Serial.println(WiFi.localIP());
 
-    // Initialize motor control pins
-    pinMode(STEPPER1_DIR_PIN, OUTPUT);
-    pinMode(STEPPER1_STEP_PIN, OUTPUT);
-    pinMode(STEPPER2_DIR_PIN, OUTPUT);
-    pinMode(STEPPER2_STEP_PIN, OUTPUT);
-    pinMode(STEPPER_EN, OUTPUT);
-    digitalWrite(STEPPER_EN, LOW); // Enable the stepper motor drivers
 
-    setupManual();  // Initialize manual mode
-    setupAutomatic();  // Initialize automatic mode
+    pinMode(TOGGLE_PIN, OUTPUT);
+    if (!mpu.begin()) {
+        Serial.println("Failed to find MPU6050 chip");
+        while (1) {
+            delay(10);
+        }
+    }
+    Serial.println("MPU6050 Found!");
+
+    mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
+    mpu.setGyroRange(MPU6050_RANGE_250_DEG);
+    mpu.setFilterBandwidth(MPU6050_BAND_44_HZ);
+
+    if (!ITimer.attachInterruptInterval(STEPPER_INTERVAL_US, TimerHandler)) {
+        Serial.println("Failed to start stepper interrupt");
+        while (1) delay(10);
+    }
+
+    Serial.println("Initialised Interrupt for Stepper");
+    // step1.setTargetSpeedRad(19.0);
+    // step2.setTargetSpeedRad(19.0);
+
+    // // Initialize motor control pins
+    // pinMode(STEPPER1_DIR_PIN, OUTPUT);
+    // pinMode(STEPPER1_STEP_PIN, OUTPUT);
+    // pinMode(STEPPER2_DIR_PIN, OUTPUT);
+    // pinMode(STEPPER2_STEP_PIN, OUTPUT);
+    // pinMode(STEPPER_EN, OUTPUT);
+    // digitalWrite(STEPPER_EN, LOW); // Enable the stepper motor drivers
+
+  
+    //setupAutomatic();  // Initialize automatic mode
 
     server.on("/", HTTP_GET, handleRoot);
     server.begin();
     Serial.println("Web server started");
 }
 
+
 void loop() {
     server.handleClient();  // Handle web requests
 
     switch (currentMode) {
-        case MANUAL:
-            loopManual();
-            break;
         case AUTOMATIC:
+            pinMode(STEPPER_EN, OUTPUT);
+            digitalWrite(STEPPER_EN, false);
             loopAutomatic();
             break;
+        case MANUAL:
+            setupManual();  // Initialize manual mode
+            loopManual();
+            break;
+        case STOP:
+            stopMoving();
+            break;
+        default:
+            // Optionally handle any undefined mode
+            Serial.println("Undefined mode");
+            break;
     }
+    
 }
+
 
 
 

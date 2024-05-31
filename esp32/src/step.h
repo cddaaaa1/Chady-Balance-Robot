@@ -1,3 +1,6 @@
+#ifndef STEP_H
+#define STEP_H
+
 #include <Arduino.h>
 
 class step {
@@ -154,3 +157,6 @@ public:
     }
 
 };
+
+
+#endif // STEP_H

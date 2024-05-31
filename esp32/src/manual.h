@@ -2,6 +2,7 @@
 #define MANUAL_H
 
 #include <Arduino.h>
+#include <step.h>
 
 extern bool isForward;
 extern bool isBackward;
@@ -17,6 +18,9 @@ extern bool isRight;
 
 // Diagnostic pin for oscilloscope
 #define TOGGLE_PIN  32        //Arduino A4
+
+extern step step1;
+extern step step2;
 
 // Function to set motor pins for moving forward
 void moveForward() {
@@ -78,19 +82,18 @@ void turnRight() {
     Serial.println("Turning right");
 }
 
-// Function to stop all movement
-void stopMoving() {
-    digitalWrite(STEPPER1_STEP_PIN, LOW);
-    digitalWrite(STEPPER2_STEP_PIN, LOW);
-}
-
 void setupManual() {
+    while(step1.getSpeedRad() != 0 && step2.getSpeedRad() != 0){
+        digitalWrite(STEPPER_EN, true);
+        step1.setTargetSpeedRad(0);
+        step2.setTargetSpeedRad(0);
+    }
+    digitalWrite(STEPPER_EN, false);
     pinMode(STEPPER1_DIR_PIN, OUTPUT);
     pinMode(STEPPER1_STEP_PIN, OUTPUT);
     pinMode(STEPPER2_DIR_PIN, OUTPUT);
     pinMode(STEPPER2_STEP_PIN, OUTPUT);
     pinMode(STEPPER_EN, OUTPUT);
-    digitalWrite(STEPPER_EN, LOW);  // Enable the stepper motor drivers
 }
 
 void loopManual() {
@@ -121,13 +124,7 @@ void handleManualCommand(String command) {
         isForward = false;
         isBackward = false;
         isLeft = false;
-    } else if (command == "stop") {
-        isForward = false;
-        isBackward = false;
-        isLeft = false;
-        isRight = false;
-        stopMoving();
-    }
+    } 
 }
 
 #endif
