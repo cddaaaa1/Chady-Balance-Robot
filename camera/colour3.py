@@ -55,15 +55,16 @@ def get_color_threshold(color_name):
         "red": ((110, 100, 100), (130, 255, 255)),
         "yellow": ((100, 25, 25), (110, 255, 255)),
         "blue": ((0, 100, 100), (10, 255, 255)),
-        "green": ((35, 25, 25), (86, 255, 255))
+        "green": ((35, 25, 25), (86, 255, 255)),
+        "purple":((135, 43, 64), (155, 255, 255))
     }
     return color_thresholds.get(color_name.lower())
 
 try:
     while True:
         # 获取用户输入的颜色名称
-        color_name = input("请输入要检测的颜色名称 (red/yellow/blue/green): ")
-        if color_name.lower() not in ["red", "yellow", "blue", "green"]:
+        color_name = input("请输入要检测的颜色名称 (red/yellow/blue/green/purple): ")
+        if color_name.lower() not in ["red", "yellow", "blue", "green", "purple"]:
             print("请输入正确的颜色名称！")
             continue
         
