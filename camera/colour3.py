@@ -68,18 +68,28 @@ try:
             print("请输入正确的颜色名称！")
             continue
         
-        # 捕获图像到NumPy数组
-        frame = picam2.capture_array()
+        while True:
+            # 捕获图像到NumPy数组
+            frame = picam2.capture_array()
 
-        # 进行颜色检测并获取占比
-        result, color_percentage = color_detection(frame, color_name)
-        print(f"{color_name.capitalize()}占比：{color_percentage:.2f}%")
+            # 进行颜色检测并获取占比
+            result, color_percentage = color_detection(frame, color_name)
+            print(f"{color_name.capitalize()}占比：{color_percentage:.2f}%")
 
-        # 显示结果图像
-        cv2.imshow("Result", result)
+            # 显示结果图像
+            cv2.imshow("Result", result)
 
-        # 暂停一段时间以降低处理频率
-        time.sleep(0.1)
+            # 检查是否达到占比30%
+            if color_percentage >= 30:
+                print("找到了！")
+                break
+
+            # 暂停一段时间以降低处理频率
+            time.sleep(0.1)
+
+            # 检查是否按下 'q' 键
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
         # 检查是否按下 'q' 键
         if cv2.waitKey(1) & 0xFF == ord('q'):
