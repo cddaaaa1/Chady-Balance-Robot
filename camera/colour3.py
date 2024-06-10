@@ -53,14 +53,14 @@ def get_color_threshold(color_name):
     """根据颜色名称返回相应的颜色阈值"""
     color_thresholds = {
         "red": ((110, 100, 100), (130, 255, 255)),
-        "yellow": ((100, 25, 25), (110, 255, 255)),
+        "yellow": (90, 100, 100), (100, 255, 255)),
         "blue": ((0, 100, 100), (10, 255, 255)),
         "green": ((35, 25, 25), (86, 255, 255)),
-        "purple":((135, 43, 64), (155, 255, 255))
+        "purple":((150, 43, 64), (170, 255, 255))
     }
     return color_thresholds.get(color_name.lower())
 
-try:
+try:334
     while True:
         # 获取用户输入的颜色名称
         color_name = input("请输入要检测的颜色名称 (red/yellow/blue/green/purple): ")
