@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.ticker import MaxNLocator
+import numpy as np
 
-ESP32_IP = "172.20.10.4"  # Replace with your ESP32's IP address
+ESP32_IP = "192.168.0.44"  # Replace with your ESP32's IP address
 DATA_URL = f"http://{ESP32_IP}/data"
 SET_VARIABLE_URL = f"http://{ESP32_IP}/setVariable"
 GET_VARIABLES_URL = f"http://{ESP32_IP}/getVariables"
@@ -18,6 +19,7 @@ timestamps = []
 pitch = []
 velocity = []
 target_speed_values = []
+yaw = []
 
 # List of variables to select from
 variables = [
@@ -51,8 +53,8 @@ def update_data(frame):
         current_time = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
         timestamps.append(current_time)
         pitch.append(data['pitch'])
-        print(data['pitch'])
         velocity.append(data['velocity'])
+        yaw.append(data['yaw'])
         target_speed_values.append(square_wave_value if square_wave_active else None)
         
         # Keep the last 20 data points
@@ -60,6 +62,7 @@ def update_data(frame):
             timestamps.pop(0)
             pitch.pop(0)
             velocity.pop(0)
+            yaw.pop(0)
             target_speed_values.pop(0)
         
         ax1.clear()
@@ -88,20 +91,36 @@ def update_data(frame):
         ax1.legend(loc='upper left')
         ax2.legend(loc='upper left')
 
+         # Update the compass for yaw
+        compass_ax.clear()
+        yaw_angle_rad = data['yaw']
+        yaw_angle = np.rad2deg(yaw_angle_rad)
+        compass_ax.set_ylim(0, 1)
+        compass_ax.set_yticklabels([])  # Hide the radial ticks
+        compass_ax.arrow(yaw_angle_rad, 0, 0, 1, head_width=0.1, head_length=0.2, fc='purple', ec='purple')
+        compass_ax.text(yaw_angle_rad, 1.1, f"Yaw: {yaw_angle}°", horizontalalignment='center', verticalalignment='center', color='black')
+        compass_ax.set_title('Yaw Angle (Compass)')
+
+        canvas.draw()
+        compass_canvas.draw()  # Add this line to update the compass canvas
+
 def clear_graph():
-    global timestamps, pitch, velocity, target_speed_values
-    timestamps, pitch, velocity, target_speed_values = [], [], [], []
+    global timestamps, pitch, velocity, yaw, target_speed_values
+    timestamps, pitch, velocity, yaw, target_speed_values = [], [], [], [], []
     ax1.clear()
     ax2.clear()
+    compass_ax.clear()
     ax1.set_title('Real-time pitch')
     ax2.set_title('Real-time velocity')
+    compass_ax.set_title('Yaw Angle (Compass)')
     ax1.set_xlabel('Time')
     ax1.set_ylabel('pitch (radius)')
     ax2.set_xlabel('Time')
     ax2.set_ylabel('velocity (m/s)')
-    ax1.legend(loc='upper left')
-    ax2.legend(loc='upper left')
+    compass_ax.set_ylim(0, 1)
+    compass_ax.set_yticklabels([])  # Hide the radial ticks
     canvas.draw()
+    compass_canvas.draw()
 
 def set_variable(variable, value):
     try:
@@ -217,12 +236,23 @@ variables_display.grid(row=0, column=0, columnspan=2, padx=5, pady=5)
 update_button = ttk.Button(variable_frame, text="Update Variables", command=update_variables_display)
 update_button.grid(row=1, column=0, columnspan=2, padx=5, pady=5)
 
-# Create a Matplotlib figure and axes
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6))
+# Create subframes for the graph frame
+line_graph_frame = ttk.Frame(graph_frame)
+line_graph_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-# Integrate the Matplotlib figure with the Tkinter GUI
-canvas = FigureCanvasTkAgg(fig, master=graph_frame)
-canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+compass_frame = ttk.Frame(graph_frame)
+compass_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+
+# Create Matplotlib figure and axes for line graphs
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
+canvas = FigureCanvasTkAgg(fig, master=line_graph_frame)
+canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+# Create a separate figure for the compass
+compass_fig, compass_ax = plt.subplots(subplot_kw={'projection': 'polar'})
+compass_canvas = FigureCanvasTkAgg(compass_fig, master=compass_frame)
+compass_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
 
 # Create the animation
 ani = animation.FuncAnimation(fig, update_data, interval=100)
