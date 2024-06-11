@@ -114,6 +114,47 @@ void handleController(AsyncWebServerRequest *request)
     }
 }
 
+void handleCamera(AsyncWebServerRequest *request)
+{
+    if (request->hasParam("x", true))
+    {
+        cam_rho = request->getParam("x", true)->value().toFloat();
+        // Serial.print("rho: ");
+        // Serial.println(cam_rho);
+    }
+    if (request->hasParam("y", true))
+    {
+        cam_theta = request->getParam("y", true)->value().toFloat();
+        Serial.print("cam_theta: ");
+        Serial.println(cam_theta, 6);
+    }
+
+    // Send a response back to the client indicating data was received
+    request->send(200, "text/plain", "Data received");
+}
+
+void handleColor(AsyncWebServerRequest *request)
+{
+    if (request->hasArg("ifFound"))
+    {
+        String ifFound = request->arg("ifFound");
+        if (ifFound == "true")
+        {
+            target_velocity = 0;
+            Serial.println("Color found");
+        }
+        else
+        {
+            // continue moving in the direction of the door
+        }
+        request->send(200, "text/plain", "Color handling completed");
+    }
+    else
+    {
+        request->send(400, "text/plain", "Bad Request");
+    }
+}
+
 void handleSetVariable(AsyncWebServerRequest *request)
 {
     if (request->hasArg("cmd"))
@@ -249,6 +290,8 @@ void setupServer()
     server.on("/data", HTTP_GET, handleData);
     server.on("/getVariables", HTTP_GET, handleGetVariables);
     server.on("/controller", HTTP_POST, handleController);
+    server.on("/color", HTTP_POST, handleColor);
+    server.on("/camera", HTTP_POST, handleCamera);
     server.begin();
     Serial.println("HTTP server started");
 }

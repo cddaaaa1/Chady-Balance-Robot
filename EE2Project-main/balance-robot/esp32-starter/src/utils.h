@@ -100,9 +100,6 @@ void controlLoop()
     static float turn_output;
     static float yaw_drift;
     static float current_target_angle;
-    static float drift_summation = 0;
-    static unsigned long sample_count = 1;
-    static float average_drift;
     static float acc_input1;
     static float acc_input2;
 
@@ -129,29 +126,13 @@ void controlLoop()
         mpu.getEvent(&a, &g, &temp);
         pitch = titltAngle(a, g);
         yaw = yawAngle(a, g);
-        if (abs(g.gyro.x) < 0.01)
-        {
-            drift_summation += (yaw - previous_yaw);
-            average_drift = drift_summation / sample_count;
-            sample_count++;
-            yaw -= average_drift;
-            previous_yaw = yaw;
-        }
-        else
-        {
-            previous_yaw = yaw;
-            drift_summation = 0;
-            sample_count = 1;
-            average_drift = 0;
-        }
-
-        velocity1 = step1.getSpeedRad();
-        velcoity2 = step2.getSpeedRad();
         turn_output = turn(g.gyro.x, yaw);
 
         if (millis() > loopTimer_outter)
         {
             loopTimer_outter += LOOP_INTERVAL_OUTER;
+            velocity1 = step1.getSpeedRad();
+            velcoity2 = step2.getSpeedRad();
             velocity_input = target_velocity;
             velocity_output = velocity(velocity1, velcoity2);
         }
@@ -197,10 +178,11 @@ void controlLoop()
         if (millis() > printTimer)
         {
             printTimer += PRINT_INTERVAL;
-            Serial.print("Pitch: ");
+            Serial.print("pitch: ");
             Serial.println(pitch);
         }
     }
 }
 
 #endif // UTILS_H
+    

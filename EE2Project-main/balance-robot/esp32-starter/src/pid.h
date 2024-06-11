@@ -24,11 +24,39 @@ float titltAngle(sensors_event_t a, sensors_event_t g)
 
 float yawAngle(sensors_event_t a, sensors_event_t g)
 {
-    const float alpha_yaw = 0.98;
-    yaw += g.gyro.x * (LOOP_INTERVAL_INNER / 1000); // adjust dt into second
-    yaw = alpha_yaw * (yaw + g.gyro.x * LOOP_INTERVAL_INNER / 1000) + (1 - alpha_yaw) * yaw;
+    const float alpha_yaw = 0.7;
+    static float yaw_angle = 0;
+    static float drift_summation = 0;
+    static float average_drift = 0;
+    static unsigned long sample_count = 1;
+    yaw_angle += g.gyro.x * (LOOP_INTERVAL_INNER / 1000); // adjust dt into second
+    yaw_angle = alpha_yaw * (previous_yaw + g.gyro.x * LOOP_INTERVAL_INNER / 1000) + (1 - alpha_yaw) * yaw_angle;
+    // yaw_angle = previous_yaw + g.gyro.x * (LOOP_INTERVAL_INNER / 1000); // adjust dt into second
+    // yaw_angle = (1 - alpha_yaw) * yaw_angle + alpha_yaw * previous_yaw;
+    if (yaw_angle > 360)
+    {
+        yaw_angle -= 360;
+    }
+    if (yaw_angle < -360)
+    {
+        yaw_angle += 360;
+    }
     gyro_x = g.gyro.x;
-    return yaw;
+    if (abs(g.gyro.x) < 0.02)
+    {
+        drift_summation += (yaw_angle - previous_yaw);
+        average_drift = drift_summation / sample_count;
+        sample_count++;
+        yaw_angle -= average_drift;
+    }
+    else
+    {
+        drift_summation = 0;
+        sample_count = 1;
+        average_drift = 0;
+    }
+    previous_yaw = yaw_angle;
+    return yaw_angle;
 }
 
 float vertical(float angle_input, float gyro_y)
@@ -69,9 +97,10 @@ float velocity(float step1_velocity, float step2_velocity)
 float turn(float gyro_x, float yaw)
 {
     static float output;
-    if (tracking_mode)
+    if (true)
     {
-        // IR tracking
+        //  tracking
+        output = (cam_theta - camera_bias) * camera_kp + gyro_x * camera_kd;
     }
     else
     {
