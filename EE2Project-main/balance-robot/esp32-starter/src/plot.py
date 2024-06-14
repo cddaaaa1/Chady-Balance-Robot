@@ -10,7 +10,7 @@ from matplotlib.ticker import MaxNLocator
 import numpy as np
 import struct
 
-ESP32_IP = "192.168.0.44"  # Replace with your ESP32's IP address
+ESP32_IP = "172.20.10.2"  # Replace with your ESP32's IP address
 DATA_URL = f"http://{ESP32_IP}/data"
 SET_VARIABLE_URL = f"http://{ESP32_IP}/setVariable"
 GET_VARIABLES_URL = f"http://{ESP32_IP}/getVariables"
@@ -258,7 +258,7 @@ compass_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
 
 # Create the animation
-ani = animation.FuncAnimation(fig, update_data, interval=100)
+# ani = animation.FuncAnimation(fig, update_data, interval=1000)
 
 plt.tight_layout()
 root.mainloop()

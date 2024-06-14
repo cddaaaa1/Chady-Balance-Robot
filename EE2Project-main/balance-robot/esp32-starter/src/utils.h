@@ -77,7 +77,7 @@ void loopAutomatic(unsigned long currentMillis)
 {
     if (color_detected && !turning)
     {
-        tracking = false;
+        // tracking = false;
         target_angle = yaw + 1.57;
         turning = true;
     }
@@ -87,6 +87,7 @@ void loopAutomatic(unsigned long currentMillis)
         // buzzer
         color_detected = false;
         turning = false;
+        back_to_track = true;
     }
 
     if (back_to_track && !turning)
@@ -97,7 +98,7 @@ void loopAutomatic(unsigned long currentMillis)
 
     if ((target_angle - yaw < 0.05 && target_angle - yaw > -0.05) && (gyro_x < 0.05 && gyro_x > -0.05) && back_to_track)
     {
-        tracking = true;
+        // tracking = true;
         back_to_track = false;
         turning = false;
     }
@@ -132,18 +133,13 @@ void setupSystem()
     Serial.begin(115200);
     pinMode(TOGGLE_PIN, OUTPUT);
 
-    // Initialize the Task Watchdog Timer with a timeout of 5 seconds
-    esp_task_wdt_init(5, true);
-    // Add the current task to the watchdog
-    esp_task_wdt_add(NULL);
-
     // ultrasonic sensor setup
     pinMode(trigPin, OUTPUT);
     pinMode(echoPin, INPUT);
 
     // wifi and server setup
-    setupWifi();
-    setupServer();
+    // setupWifi();
+    // setupServer();
 
     if (!mpu.begin())
     {
@@ -180,6 +176,7 @@ void controlLoop()
     static unsigned long serverTimer = 0;
     static unsigned long loopTimer_outter = 0;
     static unsigned long controllerTimer = 0;
+    static unsigned long turnTimer = 0;
     static unsigned long actionTimer = 0;
 
     static float vertical_output;
@@ -228,12 +225,13 @@ void controlLoop()
 
         if (currentMillis > loopTimer_outter)
         {
+
             loopTimer_outter += LOOP_INTERVAL_OUTER;
             velocity1 = step1.getSpeedRad();
             velcoity2 = step2.getSpeedRad();
             velocity_input = target_velocity;
             velocity_output = velocity(velocity1, velcoity2);
-            stop_flag = ultrasonicStop();
+            // stop_flag = ultrasonicStop();
         }
 
         vertical_output = vertical(bias + velocity_output, g.gyro.y);
@@ -241,20 +239,20 @@ void controlLoop()
         acc_input1 = vertical_output + turn_output;
         acc_input2 = vertical_output - turn_output;
         // ultrasonic
-        if (stop_flag)
-        {
-            if (!ultrasonic_flag)
-            {
-                last_target_velocity = target_velocity;
-                ultrasonic_flag = true;
-            }
-            target_velocity = 0;
-        }
-        else if (ultrasonic_flag)
-        {
-            target_velocity = last_target_velocity;
-            ultrasonic_flag = false;
-        }
+        // if (stop_flag)
+        // {
+        //     if (!ultrasonic_flag)
+        //     {
+        //         last_target_velocity = target_velocity;
+        //         ultrasonic_flag = true;
+        //     }
+        //     target_velocity = 0;
+        // }
+        // else if (ultrasonic_flag)
+        // {
+        //     target_velocity = last_target_velocity;
+        //     ultrasonic_flag = false;
+        // }
         if (pitch > 0.6 || pitch < -0.6)
         {
             step1.setTargetSpeedRad(0);
@@ -288,21 +286,14 @@ void controlLoop()
             }
         }
         // test for action
-        if (currentMillis > actionTimer)
-        {
-            actionTimer += ACTION_INTERVAL;
-            if (right)
-            {
-                target_angle = yaw + 1.57;
-                right = false;
-            }
-        }
 
         if (currentMillis > printTimer)
         {
             printTimer += PRINT_INTERVAL;
-            // Serial.print("pitch: ");
-            // Serial.println(pitch);
+            Serial.print("pitch: ");
+            Serial.println(pitch);
+            // Serial.print("color_detected: ");
+            // Serial.println(color_detected);
             // Serial.print("Distance: ");
             // Serial.println(distance);
             // Serial.print("cm");

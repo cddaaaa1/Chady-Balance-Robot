@@ -2,12 +2,6 @@
 #define INTERNET_H
 
 #include "config.h"
-#include <deque>
-
-const size_t maxQueueSize = 10;
-std::deque<AsyncWebServerRequest *> requestQueue;
-const unsigned long rateLimitInterval = 100; // Limit to 10 requests per second
-unsigned long lastRequestTime = 0;
 
 void resetStates()
 {
@@ -147,6 +141,7 @@ void handleColor(AsyncWebServerRequest *request)
         if (ifFound == "true")
         {
             target_velocity = 0;
+            color_detected = true;
             Serial.println("Color found");
         }
         else
@@ -299,61 +294,12 @@ void handleGetVariables(AsyncWebServerRequest *request)
 
 void handleData(AsyncWebServerRequest *request)
 {
-    unsigned long currentMillis = millis();
+    uint8_t buffer[12];
+    memcpy(buffer, &pitch, 4);         // Copy float pitch
+    memcpy(buffer + 4, &velocity1, 4); // Copy float velocity1
+    memcpy(buffer + 8, &yaw, 4);       // Copy float yaw
 
-    // Rate limiting
-    if (currentMillis - lastRequestTime < rateLimitInterval)
-    {
-        request->send(429, "text/plain", "Too Many Requests");
-        return;
-    }
-
-    lastRequestTime = currentMillis;
-
-    // Queue the request
-    if (requestQueue.size() >= maxQueueSize)
-    {
-        // Drop the oldest request to make space
-        AsyncWebServerRequest *oldestRequest = requestQueue.front();
-        requestQueue.pop_front();
-        oldestRequest->send(503, "text/plain", "Server Busy");
-    }
-    requestQueue.push_back(request);
-}
-
-void processQueuedRequests()
-{
-    static unsigned long lastProcessTime = 0;
-    unsigned long currentMillis = millis();
-
-    // Process at a controlled rate
-    if (currentMillis - lastProcessTime >= rateLimitInterval && !requestQueue.empty())
-    {
-        lastProcessTime = currentMillis;
-
-        AsyncWebServerRequest *request = requestQueue.front();
-        requestQueue.pop_front();
-
-        // StaticJsonDocument<200> jsonResponse;
-        // jsonResponse["pitch"] = pitch;
-        // jsonResponse["velocity"] = velocity1;
-        // jsonResponse["yaw"] = yaw;
-
-        // String response;
-        // serializeJson(jsonResponse, response);
-
-        // request->send(200, "application/json", response);
-
-        uint8_t buffer[12];
-        memcpy(buffer, &pitch, 4);         // Copy float pitch
-        memcpy(buffer + 4, &velocity1, 4); // Copy float velocity1
-        memcpy(buffer + 8, &yaw, 4);       // Copy float yaw
-
-        request->send(200, "application/octet-stream", String((char *)buffer, 12));
-
-        // Reset the watchdog after processing each request
-        esp_task_wdt_reset();
-    }
+    request->send(200, "application/octet-stream", String((char *)buffer, 12));
 }
 
 void setupWifi()

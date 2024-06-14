@@ -9,7 +9,6 @@
 #include <step.h>
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
-#include <esp_task_wdt.h>
 
 // The Stepper pins
 #define STEPPER1_DIR_PIN 18  // Arduino D6
@@ -28,17 +27,18 @@ const int PRINT_INTERVAL = 500;
 const int SERVER_INTERVAL = 10;
 const int LOOP_INTERVAL_INNER = 8; // strongly affect stability!!!!!!!!!!!!!!
 const int LOOP_INTERVAL_OUTER = 10;
+const int TURN_INTERVAL = 20;
 const int STEPPER_INTERVAL_US = 20;
 const int CONTROLLER_INTERVAL = 100;
 const int ACTION_INTERVAL = 5000;
 
 // PID control gains
-float vertical_kp = 200;  // 200//200
-float vertical_kd = 375;  // 300//375
-float velocity_kp = 0.03; // 0.04//0.03
+float vertical_kp = 200;  // 200//200//300//300
+float vertical_kd = 300;  // 300//400//400//375
+float velocity_kp = 0.04; // 0.04//0.03//0.015//0.03
 float velocity_ki = velocity_kp / 200;
-float turn_kp = 0.5; // 1
-float turn_kd = 1;   // 2
+float turn_kp = 0; // 1
+float turn_kd = 0; // 2
 float turn_speed = 0.0;
 float turn_direction = 0.0;
 float camera_kp = 0.000015;
@@ -47,12 +47,9 @@ bool color_detected = false;
 bool turning = false;
 bool back_to_track = false;
 
-// test
-bool right = false;
-
 // vertical loop
 float pitch;
-float bias = 0.06;
+float bias = 0.07;
 
 // velocity loop
 float velocity1;
@@ -70,31 +67,18 @@ float gyro_x = 0.0;
 float current_yaw = 0.0;
 float previous_yaw = 0.0;
 const bool continue_turning = false;
-
-// IR tracking
+// tracking trigger
 bool tracking = false;
-int decide = 0;
-int sensor[3];
-int track_error = 0;
 
 // ultrasonic sensor
-unsigned long lastSensorUpdate = 0;
+
 long duration;
 int distance;
 bool ultrasonic_flag = false;
 bool stop_flag = false;
-enum SensorState
-{
-    SENSOR_IDLE,
-    SENSOR_TRIGGERED,
-    SENSOR_ECHO_WAIT,
-    SENSOR_CALCULATE
-};
-SensorState sensorState = SENSOR_IDLE;
-unsigned long echoStartTime;
 
 // Motion target values
-float target_velocity = 0;
+float target_velocity = 0.0;
 float last_target_velocity = 0;
 float target_angle = 0.0;
 

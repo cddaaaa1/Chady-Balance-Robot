@@ -64,6 +64,17 @@ float vertical(float angle_input, float gyro_y)
     return output;
 }
 
+// float vertical(float angle_input, float gyro_y)
+// {
+//     static float output;
+//     static float last_angle_input;
+//     float angle_input_d = (angle_input - last_angle_input) / LOOP_INTERVAL_OUTER;
+//     last_angle_input = angle_input;
+
+//     output = (angle_input - pitch) * vertical_kp - (angle_input_d + gyro_y) * vertical_kd;
+//     return output;
+// }
+
 float velocity(float step1_velocity, float step2_velocity)
 {
     static float output;
@@ -75,6 +86,7 @@ float velocity(float step1_velocity, float step2_velocity)
     velocity_err = velocity_input - (step1_velocity + step2_velocity) / 2;
     velocity_err = (1 - a) * velocity_err + a * velocity_err_last;
     velocity_err_last = velocity_err;
+    velocity_err_integ += velocity_err;
 
     if (velocity_err_integ > 0.1)
     {
@@ -82,9 +94,10 @@ float velocity(float step1_velocity, float step2_velocity)
     }
     if (velocity_err_integ < -0.1)
     {
-        velocity_err_integ = 1;
+        velocity_err_integ = -0.1;
     }
-    if (pitch > 0.5 || pitch < -0.5)
+    // Serial.println(velocity_err_integ);
+    if (pitch > 0.6 || pitch < -0.6)
     {
         velocity_err_integ = 0;
     }
@@ -95,14 +108,14 @@ float velocity(float step1_velocity, float step2_velocity)
 float turn(float gyro_x, float yaw)
 {
     static float output;
-    if (tracking)
+    if (false)
     {
         //  tracking
         output = (cam_rho + cam_theta) * camera_kp + gyro_x * camera_kd;
     }
     else
     {
-        if (continue_turning)
+        if (false)
         {
             output = turn_direction * turn_speed;
         }
