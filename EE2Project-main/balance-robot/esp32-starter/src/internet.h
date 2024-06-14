@@ -2,6 +2,12 @@
 #define INTERNET_H
 
 #include "config.h"
+#include <deque>
+
+const size_t maxQueueSize = 10;
+std::deque<AsyncWebServerRequest *> requestQueue;
+const unsigned long rateLimitInterval = 100; // Limit to 10 requests per second
+unsigned long lastRequestTime = 0;
 
 void resetStates()
 {
@@ -190,13 +196,13 @@ void handleSetVariable(AsyncWebServerRequest *request)
             {
                 turn_kd = varValue;
             }
-            else if (varName == "turn_speed")
+            else if (varName == "camera_kp")
             {
-                turn_speed = varValue;
+                camera_kp = varValue;
             }
-            else if (varName == "turn_direction")
+            else if (varName == "camera_kd")
             {
-                turn_direction = varValue;
+                camera_kd = varValue;
             }
             else if (varName == "target_velocity")
             {
@@ -213,6 +219,39 @@ void handleSetVariable(AsyncWebServerRequest *request)
             else if (varName == "yaw_bias")
             {
                 yaw_bias = varValue;
+            }
+            else if (varName == "tracking")
+            {
+                if (varValue == 1)
+                {
+                    tracking = true;
+                }
+                else
+                {
+                    tracking = false;
+                }
+            }
+            else if (varName == "color_detected")
+            {
+                if (varValue == 1)
+                {
+                    color_detected = true;
+                }
+                else
+                {
+                    color_detected = false;
+                }
+            }
+            else if (varName == "back_to_track")
+            {
+                if (varValue == 1)
+                {
+                    back_to_track = true;
+                }
+                else
+                {
+                    back_to_track = false;
+                }
             }
             else
             {
@@ -242,12 +281,15 @@ void handleGetVariables(AsyncWebServerRequest *request)
     jsonResponse["velocity_ki"] = velocity_ki;
     jsonResponse["turn_kp"] = turn_kp;
     jsonResponse["turn_kd"] = turn_kd;
-    jsonResponse["turn_speed"] = turn_speed;
-    jsonResponse["turn_direction"] = turn_direction;
+    jsonResponse["camera_kp"] = camera_kp;
+    jsonResponse["camera_kd"] = camera_kd;
     jsonResponse["target_velocity"] = target_velocity;
     jsonResponse["target_angle"] = target_angle;
     jsonResponse["bias"] = bias;
     jsonResponse["yaw_bias"] = yaw_bias;
+    jsonResponse["tracking"] = tracking;
+    jsonResponse["color_detected"] = color_detected;
+    jsonResponse["back_to_track"] = back_to_track;
 
     String response;
     serializeJson(jsonResponse, response);
@@ -257,15 +299,61 @@ void handleGetVariables(AsyncWebServerRequest *request)
 
 void handleData(AsyncWebServerRequest *request)
 {
-    StaticJsonDocument<200> jsonResponse;
-    jsonResponse["pitch"] = pitch;
-    jsonResponse["velocity"] = velocity1;
-    jsonResponse["yaw"] = yaw;
+    unsigned long currentMillis = millis();
 
-    String response;
-    serializeJson(jsonResponse, response);
+    // Rate limiting
+    if (currentMillis - lastRequestTime < rateLimitInterval)
+    {
+        request->send(429, "text/plain", "Too Many Requests");
+        return;
+    }
 
-    request->send(200, "application/json", response);
+    lastRequestTime = currentMillis;
+
+    // Queue the request
+    if (requestQueue.size() >= maxQueueSize)
+    {
+        // Drop the oldest request to make space
+        AsyncWebServerRequest *oldestRequest = requestQueue.front();
+        requestQueue.pop_front();
+        oldestRequest->send(503, "text/plain", "Server Busy");
+    }
+    requestQueue.push_back(request);
+}
+
+void processQueuedRequests()
+{
+    static unsigned long lastProcessTime = 0;
+    unsigned long currentMillis = millis();
+
+    // Process at a controlled rate
+    if (currentMillis - lastProcessTime >= rateLimitInterval && !requestQueue.empty())
+    {
+        lastProcessTime = currentMillis;
+
+        AsyncWebServerRequest *request = requestQueue.front();
+        requestQueue.pop_front();
+
+        // StaticJsonDocument<200> jsonResponse;
+        // jsonResponse["pitch"] = pitch;
+        // jsonResponse["velocity"] = velocity1;
+        // jsonResponse["yaw"] = yaw;
+
+        // String response;
+        // serializeJson(jsonResponse, response);
+
+        // request->send(200, "application/json", response);
+
+        uint8_t buffer[12];
+        memcpy(buffer, &pitch, 4);         // Copy float pitch
+        memcpy(buffer + 4, &velocity1, 4); // Copy float velocity1
+        memcpy(buffer + 8, &yaw, 4);       // Copy float yaw
+
+        request->send(200, "application/octet-stream", String((char *)buffer, 12));
+
+        // Reset the watchdog after processing each request
+        esp_task_wdt_reset();
+    }
 }
 
 void setupWifi()

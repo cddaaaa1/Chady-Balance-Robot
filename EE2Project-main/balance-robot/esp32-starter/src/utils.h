@@ -19,9 +19,88 @@ bool TimerHandler(void *timerNo)
     return true;
 }
 
-void loopAutomatic()
+bool ultrasonicStop()
 {
-    tracking_mode = true;
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+    duration = pulseIn(echoPin, HIGH);
+    distance = duration * 0.034 / 2;
+
+    if (distance < 10)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+// void updateBuzzerTask(BuzzerTask *task, unsigned long currentMillis)
+// {
+//     if (task->state == IDLE)
+//     {
+//         task->state = PLAYING;
+//         task->currentNote = 0;
+//         task->lastUpdateTime = currentMillis;
+//     }
+
+//     if (task->state == PLAYING)
+//     {
+//         if (currentMillis - task->lastUpdateTime >= task->noteDurations[task->currentNote] * 150)
+//         {
+//             tone(buzzerPin, task->melody[task->currentNote], 150);
+//             task->lastUpdateTime = currentMillis;
+//             task->currentNote++;
+
+//             if (task->currentNote >= 8)
+//             {
+//                 task->state = WAITING;
+//                 task->lastUpdateTime = currentMillis;
+//             }
+//         }
+//     }
+
+//     if (task->state == WAITING)
+//     {
+//         if (currentMillis - task->lastUpdateTime >= 1000)
+//         {
+//             task->state = IDLE;
+//         }
+//     }
+// }
+
+void loopAutomatic(unsigned long currentMillis)
+{
+    if (color_detected && !turning)
+    {
+        tracking = false;
+        target_angle = yaw + 1.57;
+        turning = true;
+    }
+
+    if ((target_angle - yaw < 0.05 && target_angle - yaw > -0.05) && (gyro_x < 0.05 && gyro_x > -0.05) && color_detected) // robot might move, so color_detected might turn to false
+    {
+        // buzzer
+        color_detected = false;
+        turning = false;
+    }
+
+    if (back_to_track && !turning)
+    {
+        target_angle = yaw - 1.57;
+        turning = true;
+    }
+
+    if ((target_angle - yaw < 0.05 && target_angle - yaw > -0.05) && (gyro_x < 0.05 && gyro_x > -0.05) && back_to_track)
+    {
+        tracking = true;
+        back_to_track = false;
+        turning = false;
+    }
 }
 
 void loopManual()
@@ -52,10 +131,17 @@ void setupSystem()
 {
     Serial.begin(115200);
     pinMode(TOGGLE_PIN, OUTPUT);
-    pinMode(left_track_PIN, INPUT);
-    pinMode(middle_track_PIN, INPUT);
-    pinMode(right_track_PIN, INPUT);
 
+    // Initialize the Task Watchdog Timer with a timeout of 5 seconds
+    esp_task_wdt_init(5, true);
+    // Add the current task to the watchdog
+    esp_task_wdt_add(NULL);
+
+    // ultrasonic sensor setup
+    pinMode(trigPin, OUTPUT);
+    pinMode(echoPin, INPUT);
+
+    // wifi and server setup
     setupWifi();
     setupServer();
 
@@ -94,6 +180,7 @@ void controlLoop()
     static unsigned long serverTimer = 0;
     static unsigned long loopTimer_outter = 0;
     static unsigned long controllerTimer = 0;
+    static unsigned long actionTimer = 0;
 
     static float vertical_output;
     static float velocity_output;
@@ -103,14 +190,16 @@ void controlLoop()
     static float acc_input1;
     static float acc_input2;
 
-    if (millis() > controllerTimer)
+    unsigned long currentMillis = millis();
+
+    if (currentMillis > controllerTimer)
     {
         switch (currentMode)
         {
         case AUTOMATIC:
-            pinMode(STEPPER_EN, OUTPUT);
-            digitalWrite(STEPPER_EN, false);
-            loopAutomatic();
+            // pinMode(STEPPER_EN, OUTPUT);
+            // digitalWrite(STEPPER_EN, false);
+            loopAutomatic(currentMillis);
             break;
         case MANUAL:
             setupManual();
@@ -118,9 +207,18 @@ void controlLoop()
         }
     }
 
-    if (millis() > loopTimer_inner)
+    if (currentMillis > loopTimer_inner)
     {
         loopTimer_inner += LOOP_INTERVAL_INNER;
+        static unsigned long previous = 0;
+        unsigned long currents = millis();
+        unsigned long loopTime = currents - previous;
+        previous = currents;
+        if (loopTime > 50)
+        {
+            Serial.print("Loop time: ");
+            Serial.println(loopTime);
+        }
 
         sensors_event_t a, g, temp;
         mpu.getEvent(&a, &g, &temp);
@@ -128,21 +226,36 @@ void controlLoop()
         yaw = yawAngle(a, g);
         turn_output = turn(g.gyro.x, yaw);
 
-        if (millis() > loopTimer_outter)
+        if (currentMillis > loopTimer_outter)
         {
             loopTimer_outter += LOOP_INTERVAL_OUTER;
             velocity1 = step1.getSpeedRad();
             velcoity2 = step2.getSpeedRad();
             velocity_input = target_velocity;
             velocity_output = velocity(velocity1, velcoity2);
+            stop_flag = ultrasonicStop();
         }
 
         vertical_output = vertical(bias + velocity_output, g.gyro.y);
 
         acc_input1 = vertical_output + turn_output;
         acc_input2 = vertical_output - turn_output;
-
-        if (pitch > 0.4 || pitch < -0.4)
+        // ultrasonic
+        if (stop_flag)
+        {
+            if (!ultrasonic_flag)
+            {
+                last_target_velocity = target_velocity;
+                ultrasonic_flag = true;
+            }
+            target_velocity = 0;
+        }
+        else if (ultrasonic_flag)
+        {
+            target_velocity = last_target_velocity;
+            ultrasonic_flag = false;
+        }
+        if (pitch > 0.6 || pitch < -0.6)
         {
             step1.setTargetSpeedRad(0);
             step2.setTargetSpeedRad(0);
@@ -174,15 +287,29 @@ void controlLoop()
                 step2.setTargetSpeedRad(-20);
             }
         }
+        // test for action
+        if (currentMillis > actionTimer)
+        {
+            actionTimer += ACTION_INTERVAL;
+            if (right)
+            {
+                target_angle = yaw + 1.57;
+                right = false;
+            }
+        }
 
-        if (millis() > printTimer)
+        if (currentMillis > printTimer)
         {
             printTimer += PRINT_INTERVAL;
-            Serial.print("pitch: ");
-            Serial.println(pitch);
+            // Serial.print("pitch: ");
+            // Serial.println(pitch);
+            // Serial.print("Distance: ");
+            // Serial.println(distance);
+            // Serial.print("cm");
+            // Serial.print("target_speed");
+            // Serial.println(target_velocity);
         }
     }
 }
 
 #endif // UTILS_H
-    

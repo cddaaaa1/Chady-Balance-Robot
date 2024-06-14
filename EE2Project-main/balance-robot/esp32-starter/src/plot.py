@@ -8,8 +8,9 @@ import matplotlib.animation as animation
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.ticker import MaxNLocator
 import numpy as np
+import struct
 
-ESP32_IP = "172.20.10.3"  # Replace with your ESP32's IP address
+ESP32_IP = "192.168.0.44"  # Replace with your ESP32's IP address
 DATA_URL = f"http://{ESP32_IP}/data"
 SET_VARIABLE_URL = f"http://{ESP32_IP}/setVariable"
 GET_VARIABLES_URL = f"http://{ESP32_IP}/getVariables"
@@ -24,8 +25,8 @@ yaw = []
 # List of variables to select from
 variables = [
     "vertical_kp", "vertical_kd", "velocity_kp", "velocity_ki",
-    "turn_kp", "turn_kd", "turn_speed", "turn_direction",
-    "target_velocity", "target_angle","bias","yaw_bias",
+    "turn_kp", "turn_kd",  "camera_kp", "camera_kd", 
+    "target_velocity", "target_angle","bias","yaw_bias","tracking","color_detected","back_to_track",
 ]
 
 # Flag for square wave generation
@@ -37,8 +38,10 @@ def get_sensor_data():
     try:
         response = requests.get(DATA_URL)
         if response.status_code == 200:
-            data = response.json()
-            return data
+            binary_data = response.content
+            # Unpack the binary data
+            pitch, velocity, yaw = struct.unpack('fff', binary_data)
+            return {'pitch': pitch, 'velocity': velocity, 'yaw': yaw}
         else:
             print(f"Failed to retrieve data, status code: {response.status_code}")
             return None

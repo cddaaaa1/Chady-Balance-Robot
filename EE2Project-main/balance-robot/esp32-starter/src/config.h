@@ -9,44 +9,50 @@
 #include <step.h>
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
+#include <esp_task_wdt.h>
 
 // The Stepper pins
-#define STEPPER1_DIR_PIN 16
-#define STEPPER1_STEP_PIN 17
-#define STEPPER2_DIR_PIN 4
-#define STEPPER2_STEP_PIN 14
-#define STEPPER_EN 15
+#define STEPPER1_DIR_PIN 18  // Arduino D6
+#define STEPPER1_STEP_PIN 19 // Arduino D5
+#define STEPPER2_DIR_PIN 4   // Arduino D11
+#define STEPPER2_STEP_PIN 14 // Arduino D12
+#define STEPPER_EN 15        // Arduino D12
 
 // Diagnostic pin for oscilloscope
-#define TOGGLE_PIN 32
+#define TOGGLE_PIN 32 // Arduino A4
 
-// IR tracking pins
-#define left_track_PIN 27
-#define middle_track_PIN 5
-#define right_track_PIN 18
+#define trigPin 26 // Arduino A1
+#define echoPin 25 // Arduino A2
 
 const int PRINT_INTERVAL = 500;
 const int SERVER_INTERVAL = 10;
-const int LOOP_INTERVAL_INNER = 4;
+const int LOOP_INTERVAL_INNER = 8; // strongly affect stability!!!!!!!!!!!!!!
 const int LOOP_INTERVAL_OUTER = 10;
 const int STEPPER_INTERVAL_US = 20;
 const int CONTROLLER_INTERVAL = 100;
+const int ACTION_INTERVAL = 5000;
 
 // PID control gains
-float vertical_kp = 200;  // 200
-float vertical_kd = 300;  // 300
-float velocity_kp = 0.04; // 0.04
+float vertical_kp = 200;  // 200//200
+float vertical_kd = 375;  // 300//375
+float velocity_kp = 0.03; // 0.04//0.03
 float velocity_ki = velocity_kp / 200;
-float turn_kp = -0.5;
-float turn_kd = -1;
+float turn_kp = 0.5; // 1
+float turn_kd = 1;   // 2
 float turn_speed = 0.0;
 float turn_direction = 0.0;
-float camera_kp = 0.5;
-float camera_kd = 1;
+float camera_kp = 0.000015;
+float camera_kd = -0.5;
+bool color_detected = false;
+bool turning = false;
+bool back_to_track = false;
+
+// test
+bool right = false;
 
 // vertical loop
 float pitch;
-float bias = 0.04;
+float bias = 0.06;
 
 // velocity loop
 float velocity1;
@@ -66,13 +72,30 @@ float previous_yaw = 0.0;
 const bool continue_turning = false;
 
 // IR tracking
-bool tracking_mode = false;
+bool tracking = false;
 int decide = 0;
 int sensor[3];
 int track_error = 0;
 
+// ultrasonic sensor
+unsigned long lastSensorUpdate = 0;
+long duration;
+int distance;
+bool ultrasonic_flag = false;
+bool stop_flag = false;
+enum SensorState
+{
+    SENSOR_IDLE,
+    SENSOR_TRIGGERED,
+    SENSOR_ECHO_WAIT,
+    SENSOR_CALCULATE
+};
+SensorState sensorState = SENSOR_IDLE;
+unsigned long echoStartTime;
+
 // Motion target values
 float target_velocity = 0;
+float last_target_velocity = 0;
 float target_angle = 0.0;
 
 // web controller
@@ -91,6 +114,49 @@ bool isLeft;
 bool isRight;
 bool isStop;
 
+// Buzzer
+
+// const int buzzerPin = 12;
+
+// #define NOTE_C4 262
+// #define NOTE_D4 294
+// #define NOTE_E4 330
+// #define NOTE_F4 349
+// #define NOTE_G4 392
+// #define NOTE_A4 440
+// #define NOTE_B4 494
+// #define NOTE_C5 523
+
+// enum BuzzerState
+// {
+//     IDLE,
+//     PLAYING,
+//     WAITING
+// };
+
+// struct BuzzerTask
+// {
+//     int melody[8];
+//     int noteDurations[8];
+//     int currentNote;
+//     unsigned long lastUpdateTime;
+//     BuzzerState state;
+// };
+
+// BuzzerTask beat1 = {
+//     {NOTE_C4, NOTE_D4, NOTE_E4, NOTE_F4, NOTE_G4, NOTE_A4, NOTE_B4, NOTE_C4},
+//     {8, 8, 8, 8, 8, 8, 8, 8},
+//     0,
+//     0,
+//     IDLE};
+
+// BuzzerTask beat2 = {
+//     {NOTE_E4, NOTE_D4, NOTE_C4, NOTE_D4, NOTE_E4, NOTE_G4, NOTE_A4, NOTE_B4},
+//     {8, 16, 8, 16, 8, 8, 16, 16},
+//     0,
+//     0,
+//     IDLE};
+
 // Global objects
 ESP32Timer ITimer(3);
 Adafruit_MPU6050 mpu;
@@ -100,8 +166,10 @@ step step2(STEPPER_INTERVAL_US, STEPPER2_STEP_PIN, STEPPER2_DIR_PIN);
 AsyncWebServer server(80);
 AsyncEventSource events("/events");
 
-const char *ssid = "DuaniPhone";
-const char *password = "88888888";
-// const char *ssid = "VM0459056";
-// const char *password = "p6zTqmm6vxqc";
+// const char *ssid = "x7";
+// const char *password = "ctx20040510";
+const char *ssid = "VM0459056";
+const char *password = "p6zTqmm6vxqc";
+// const char *ssid = "201Wi-Fi";
+// const char *password = "123456789";
 #endif // CONFIG_H
