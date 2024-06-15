@@ -39,45 +39,60 @@ bool ultrasonicStop()
     }
 }
 
-// void updateBuzzerTask(BuzzerTask *task, unsigned long currentMillis)
-// {
-//     if (task->state == IDLE)
-//     {
-//         task->state = PLAYING;
-//         task->currentNote = 0;
-//         task->lastUpdateTime = currentMillis;
-//     }
+void startBuzzerTask(BuzzerTask *task, unsigned long currentMillis)
+{
+    if (task->state == IDLE)
+    {
+        task->state = PLAYING;
+        task->currentNote = 0;
+        task->lastUpdateTime = currentMillis;
+    }
+}
 
-//     if (task->state == PLAYING)
-//     {
-//         if (currentMillis - task->lastUpdateTime >= task->noteDurations[task->currentNote] * 150)
-//         {
-//             tone(buzzerPin, task->melody[task->currentNote], 150);
-//             task->lastUpdateTime = currentMillis;
-//             task->currentNote++;
+void updateBuzzerTask(BuzzerTask *task, unsigned long currentMillis)
+{
+    if (task->state == IDLE)
+    {
+        // do nothing
+    }
 
-//             if (task->currentNote >= 8)
-//             {
-//                 task->state = WAITING;
-//                 task->lastUpdateTime = currentMillis;
-//             }
-//         }
-//     }
+    if (task->state == PLAYING)
+    {
+        if (currentMillis - task->lastUpdateTime >= task->noteDurations[task->currentNote] * 150)
+        {
+            tone(buzzerPin, task->melody[task->currentNote], 150);
+            task->lastUpdateTime = currentMillis;
+            task->currentNote++;
 
-//     if (task->state == WAITING)
-//     {
-//         if (currentMillis - task->lastUpdateTime >= 1000)
-//         {
-//             task->state = IDLE;
-//         }
-//     }
-// }
+            if (task->currentNote >= 8)
+            {
+                task->state = WAITING;
+                task->lastUpdateTime = currentMillis;
+            }
+        }
+    }
+
+    if (task->state == WAITING)
+    {
+        if (currentMillis - task->lastUpdateTime >= 1000)
+        {
+            task->state = IDLE;
+        }
+    }
+}
+
+bool isBuzzerTaskIdle(BuzzerTask *task)
+{
+    return task->state == IDLE;
+}
 
 void loopAutomatic(unsigned long currentMillis)
 {
     if (color_detected && !turning)
     {
         // tracking = false;
+        currentBuzzerTask = &beat1;
+        startBuzzerTask(&beat1, currentMillis);
         target_angle = yaw + 1.57;
         turning = true;
     }
@@ -85,13 +100,16 @@ void loopAutomatic(unsigned long currentMillis)
     if ((target_angle - yaw < 0.05 && target_angle - yaw > -0.05) && (gyro_x < 0.05 && gyro_x > -0.05) && color_detected) // robot might move, so color_detected might turn to false
     {
         // buzzer
+        // startBuzzerTask(&beat1, currentMillis);
         color_detected = false;
         turning = false;
         back_to_track = true;
     }
 
-    if (back_to_track && !turning)
+    if (back_to_track && !turning && isBuzzerTaskIdle(&beat1))
     {
+        currentBuzzerTask = &alarm1;
+        startBuzzerTask(&alarm1, currentMillis);
         target_angle = yaw - 1.57;
         turning = true;
     }
@@ -133,13 +151,16 @@ void setupSystem()
     Serial.begin(115200);
     pinMode(TOGGLE_PIN, OUTPUT);
 
+    // buzzer setup
+    pinMode(buzzerPin, OUTPUT);
+
     // ultrasonic sensor setup
     pinMode(trigPin, OUTPUT);
     pinMode(echoPin, INPUT);
 
     // wifi and server setup
-    // setupWifi();
-    // setupServer();
+    setupWifi();
+    setupServer();
 
     if (!mpu.begin())
     {
@@ -189,6 +210,11 @@ void controlLoop()
 
     unsigned long currentMillis = millis();
 
+    if (currentBuzzerTask != nullptr)
+    {
+        updateBuzzerTask(currentBuzzerTask, currentMillis);
+    }
+
     if (currentMillis > controllerTimer)
     {
         switch (currentMode)
@@ -208,14 +234,14 @@ void controlLoop()
     {
         loopTimer_inner += LOOP_INTERVAL_INNER;
         static unsigned long previous = 0;
-        unsigned long currents = millis();
-        unsigned long loopTime = currents - previous;
-        previous = currents;
-        if (loopTime > 50)
-        {
-            Serial.print("Loop time: ");
-            Serial.println(loopTime);
-        }
+        // unsigned long currents = millis();
+        // unsigned long loopTime = currents - previous;
+        // previous = currents;
+        // if (loopTime > 50)
+        // {
+        //     Serial.print("Loop time: ");
+        //     Serial.println(loopTime);
+        // }s
 
         sensors_event_t a, g, temp;
         mpu.getEvent(&a, &g, &temp);

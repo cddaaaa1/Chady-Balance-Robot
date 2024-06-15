@@ -100,46 +100,49 @@ bool isStop;
 
 // Buzzer
 
-// const int buzzerPin = 12;
+const int buzzerPin = 27; // Arduino A5
 
-// #define NOTE_C4 262
-// #define NOTE_D4 294
-// #define NOTE_E4 330
-// #define NOTE_F4 349
-// #define NOTE_G4 392
-// #define NOTE_A4 440
-// #define NOTE_B4 494
-// #define NOTE_C5 523
+#define NOTE_C4 262
+#define NOTE_D4 294
+#define NOTE_E4 330
+#define NOTE_F4 349
+#define NOTE_G4 392
+#define NOTE_A4 440
+#define NOTE_B4 494
+#define NOTE_C5 523
+#define NOTE_ALARM 1000
 
-// enum BuzzerState
-// {
-//     IDLE,
-//     PLAYING,
-//     WAITING
-// };
+enum BuzzerState
+{
+    IDLE,
+    PLAYING,
+    WAITING
+};
 
-// struct BuzzerTask
-// {
-//     int melody[8];
-//     int noteDurations[8];
-//     int currentNote;
-//     unsigned long lastUpdateTime;
-//     BuzzerState state;
-// };
+struct BuzzerTask
+{
+    int melody[8];
+    int noteDurations[8];
+    int currentNote;
+    unsigned long lastUpdateTime;
+    BuzzerState state;
+};
 
-// BuzzerTask beat1 = {
-//     {NOTE_C4, NOTE_D4, NOTE_E4, NOTE_F4, NOTE_G4, NOTE_A4, NOTE_B4, NOTE_C4},
-//     {8, 8, 8, 8, 8, 8, 8, 8},
-//     0,
-//     0,
-//     IDLE};
+BuzzerTask *currentBuzzerTask = nullptr;
 
-// BuzzerTask beat2 = {
-//     {NOTE_E4, NOTE_D4, NOTE_C4, NOTE_D4, NOTE_E4, NOTE_G4, NOTE_A4, NOTE_B4},
-//     {8, 16, 8, 16, 8, 8, 16, 16},
-//     0,
-//     0,
-//     IDLE};
+BuzzerTask beat1 = {
+    {NOTE_C4, NOTE_D4, NOTE_E4, NOTE_F4, NOTE_G4, NOTE_A4, NOTE_B4, NOTE_C4},
+    {8, 8, 8, 8, 8, 8, 8, 8},
+    0,
+    0,
+    IDLE};
+
+BuzzerTask alarm1 = {
+    {NOTE_ALARM, NOTE_ALARM, NOTE_ALARM, NOTE_ALARM, NOTE_ALARM, NOTE_ALARM, NOTE_ALARM, NOTE_ALARM},
+    {8, 8, 8, 8, 8, 8, 8, 8},
+    0,
+    0,
+    IDLE};
 
 // Global objects
 ESP32Timer ITimer(3);
