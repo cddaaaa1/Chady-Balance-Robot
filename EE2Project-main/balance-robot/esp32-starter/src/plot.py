@@ -10,7 +10,7 @@ from matplotlib.ticker import MaxNLocator
 import numpy as np
 import struct
 
-ESP32_IP = "192.168.0.47"  # Replace with your ESP32's IP address
+ESP32_IP = "172.20.10.3"  # Replace with your ESP32's IP address
 DATA_URL = f"http://{ESP32_IP}/data"
 SET_VARIABLE_URL = f"http://{ESP32_IP}/setVariable"
 GET_VARIABLES_URL = f"http://{ESP32_IP}/getVariables"

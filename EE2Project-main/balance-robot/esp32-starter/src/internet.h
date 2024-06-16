@@ -21,7 +21,7 @@ void switchToAutomatic()
 void setupManual()
 {
     target_velocity = 0;
-    target_angle = yaw;
+    // target_angle = yaw;
 }
 
 void switchToManual()
@@ -86,9 +86,9 @@ void handleManualCommand(String command)
 
 void handleController(AsyncWebServerRequest *request)
 {
-    if (request->hasArg("command"))
+    if (request->hasArg("cmd"))
     {
-        String command = request->arg("command");
+        String command = request->arg("cmd");
         if (command == "switch_to_auto")
         {
             switchToAutomatic();

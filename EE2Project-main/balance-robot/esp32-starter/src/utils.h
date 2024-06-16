@@ -41,6 +41,7 @@ bool ultrasonicStop()
 
 void startBuzzerTask(BuzzerTask *task, unsigned long currentMillis)
 {
+    currentBuzzerTask = task;
     if (task->state == IDLE)
     {
         task->state = PLAYING;
@@ -126,23 +127,29 @@ void loopManual()
 {
     if (isForward)
     {
-        target_velocity = 1;
+        target_velocity = -1.3;
+        isForward = false;
     }
     else if (isBackward)
     {
-        target_velocity = -1;
+        target_velocity = 1.3;
+        isBackward = false;
     }
     else if (isStop)
     {
         target_velocity = 0;
+        // target_angle = yaw;
+        isStop = false;
     }
     else if (isLeft)
     {
-        target_angle = 0.4;
+        target_angle = yaw + 1;
+        isLeft = false;
     }
     else if (isRight)
     {
-        target_angle = -0.4;
+        target_angle = yaw - 1;
+        isRight = false;
     }
 }
 
@@ -255,7 +262,6 @@ void controlLoop()
             loopTimer_outter += LOOP_INTERVAL_OUTER;
             velocity1 = step1.getSpeedRad();
             velcoity2 = step2.getSpeedRad();
-            velocity_input = target_velocity;
             velocity_output = velocity(velocity1, velcoity2);
             // stop_flag = ultrasonicStop();
         }
@@ -316,15 +322,12 @@ void controlLoop()
         if (currentMillis > printTimer)
         {
             printTimer += PRINT_INTERVAL;
-            Serial.print("pitch: ");
-            Serial.println(pitch);
-            // Serial.print("color_detected: ");
-            // Serial.println(color_detected);
-            // Serial.print("Distance: ");
-            // Serial.println(distance);
-            // Serial.print("cm");
-            // Serial.print("target_speed");
-            // Serial.println(target_velocity);
+            // Serial.print("pitch: ");
+            // Serial.println(pitch);
+            Serial.print("yaw: ");
+            Serial.println(yaw);
+            Serial.print("target_angle:");
+            Serial.println(target_angle);
         }
     }
 }

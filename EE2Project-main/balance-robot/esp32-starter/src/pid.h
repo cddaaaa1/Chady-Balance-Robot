@@ -57,23 +57,23 @@ float yawAngle(sensors_event_t a, sensors_event_t g)
     return yaw_angle;
 }
 
-float vertical(float angle_input, float gyro_y)
-{
-    static float output;
-    output = (angle_input - pitch) * vertical_kp - gyro_y * vertical_kd;
-    return output;
-}
-
 // float vertical(float angle_input, float gyro_y)
 // {
 //     static float output;
-//     static float last_angle_input;
-//     float angle_input_d = (angle_input - last_angle_input) / LOOP_INTERVAL_OUTER;
-//     last_angle_input = angle_input;
-
-//     output = (angle_input - pitch) * vertical_kp - (angle_input_d + gyro_y) * vertical_kd;
+//     output = (angle_input - pitch) * vertical_kp - gyro_y * vertical_kd;
 //     return output;
 // }
+
+float vertical(float angle_input, float gyro_y)
+{
+    float output;
+    static float last_angle_input;
+    float angle_input_d = (angle_input - last_angle_input) / LOOP_INTERVAL_OUTER;
+    last_angle_input = angle_input;
+
+    output = (angle_input - pitch) * vertical_kp + (angle_input_d - gyro_y) * vertical_kd;
+    return output;
+}
 
 float velocity(float step1_velocity, float step2_velocity)
 {
@@ -83,7 +83,7 @@ float velocity(float step1_velocity, float step2_velocity)
     const float a = 0.7; // low pass filter coefficient
     static float velocity_err_integ;
 
-    velocity_err = velocity_input - (step1_velocity + step2_velocity) / 2;
+    velocity_err = target_velocity - (step1_velocity + step2_velocity) / 2;
     velocity_err = (1 - a) * velocity_err + a * velocity_err_last;
     velocity_err_last = velocity_err;
     velocity_err_integ += velocity_err;

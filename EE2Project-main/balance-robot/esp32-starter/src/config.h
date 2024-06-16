@@ -35,10 +35,10 @@ const int ACTION_INTERVAL = 5000;
 // PID control gains
 float vertical_kp = 200;  // 200//200//300//300
 float vertical_kd = 300;  // 300//400//400//375
-float velocity_kp = 0.04; // 0.04//0.03//0.015//0.03
+float velocity_kp = 0.03; // 0.04//0.03//0.015//0.03
 float velocity_ki = velocity_kp / 200;
-float turn_kp = 0; // 1
-float turn_kd = 0; // 2
+float turn_kp = -0.5; // 1
+float turn_kd = -1;   // 2
 float turn_speed = 0.0;
 float turn_direction = 0.0;
 float camera_kp = 0.000015;
@@ -49,7 +49,7 @@ bool back_to_track = false;
 
 // vertical loop
 float pitch;
-float bias = 0.07;
+float bias = 0.06;
 
 // velocity loop
 float velocity1;
@@ -110,7 +110,8 @@ const int buzzerPin = 27; // Arduino A5
 #define NOTE_A4 440
 #define NOTE_B4 494
 #define NOTE_C5 523
-#define NOTE_ALARM 1000
+#define ALARM1 1000
+#define ALARM2 2000
 
 enum BuzzerState
 {
@@ -138,7 +139,14 @@ BuzzerTask beat1 = {
     IDLE};
 
 BuzzerTask alarm1 = {
-    {NOTE_ALARM, NOTE_ALARM, NOTE_ALARM, NOTE_ALARM, NOTE_ALARM, NOTE_ALARM, NOTE_ALARM, NOTE_ALARM},
+    {ALARM1, ALARM1, ALARM1, ALARM1, ALARM1, ALARM1, ALARM1, ALARM1},
+    {8, 8, 8, 8, 8, 8, 8, 8},
+    0,
+    0,
+    IDLE};
+
+BuzzerTask alarm2 = {
+    {ALARM2, ALARM2, ALARM2, ALARM2, ALARM2, ALARM2, ALARM2, ALARM2},
     {8, 8, 8, 8, 8, 8, 8, 8},
     0,
     0,
@@ -153,10 +161,10 @@ step step2(STEPPER_INTERVAL_US, STEPPER2_STEP_PIN, STEPPER2_DIR_PIN);
 AsyncWebServer server(80);
 AsyncEventSource events("/events");
 
-// const char *ssid = "x7";
-// const char *password = "ctx20040510";
-const char *ssid = "VM0459056";
-const char *password = "p6zTqmm6vxqc";
+const char *ssid = "x7";
+const char *password = "ctx20040510";
+// const char *ssid = "VM0459056";
+// const char *password = "p6zTqmm6vxqc";
 // const char *ssid = "201Wi-Fi";
 // const char *password = "123456789";
 #endif // CONFIG_H
