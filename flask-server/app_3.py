@@ -8,7 +8,7 @@ import requests
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 
-RASPBERRY_PI_IP = '172.20.10.4'
+RASPBERRY_PI_IP = '172.20.10.2'
 
 # Configurations for session management
 app.config['SECRET_KEY'] = os.urandom(24)
@@ -88,7 +88,7 @@ def list_users():
 def move():
     command = request.json.get('command')
     try:
-        response = requests.post(f'http://{RASPBERRY_PI_IP}:8000/send_command', json={'command': command}, timeout=5)
+        response = requests.post(f'http://{RASPBERRY_PI_IP}/controller', data={'cmd': command}, timeout=5)
         return response.text
     except requests.RequestException as e:
         return jsonify({'error': str(e)}), 500
