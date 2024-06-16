@@ -1,9 +1,0 @@
-
-*.cache/
-*.ip_user_files/
-*.runs/
-*.sim/
-*.vcd
-*.log
-*.dcp/
-*.gen/
