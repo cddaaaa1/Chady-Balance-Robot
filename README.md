@@ -6,7 +6,12 @@
 project-root/
 ├── esp32/
 │   ├── src/
-│   │   └── main.cpp      
+|   |   ├── config.h       # Global variables and setup
+|   |   ├── internet.h     # Internet functions 
+|   |   ├── pid.h          # PID control functions
+|   |   ├── step.h         # Stepper motor functions
+|   |   ├── utils.h        # Utility functions
+│   │   └── main.cpp       # Main loop
 │   └── platformio.ini     # PlatformIO configuration file
 ├── raspi/
 │   ├── all.py             # File running on Raspberry Pi
