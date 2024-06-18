@@ -43,13 +43,12 @@ float turn_speed = 0.0;
 float turn_direction = 0.0;
 float camera_kp = 0.000015;
 float camera_kd = -0.5;
-bool color_detected = false;
 bool turning = false;
 bool back_to_track = false;
 
 // vertical loop
 float pitch;
-float bias = 0.06;
+float bias = 0.09;
 
 // velocity loop
 float velocity1;
@@ -67,6 +66,18 @@ float gyro_x = 0.0;
 float current_yaw = 0.0;
 float previous_yaw = 0.0;
 const bool continue_turning = false;
+
+// automiac loop
+enum AutoState
+{
+    MOVING,
+    TASK,
+
+};
+
+// handle color
+bool color_detected = false;
+
 // tracking trigger
 bool tracking = false;
 
@@ -78,7 +89,7 @@ bool ultrasonic_flag = false;
 bool stop_flag = false;
 
 // Motion target values
-float target_velocity = 0.0;
+float target_velocity = -1.3;
 float last_target_velocity = 0;
 float target_angle = 0.0;
 

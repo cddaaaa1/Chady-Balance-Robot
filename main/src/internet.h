@@ -140,7 +140,6 @@ void handleColor(AsyncWebServerRequest *request)
         String ifFound = request->arg("ifFound");
         if (ifFound == "true")
         {
-            target_velocity = 0;
             color_detected = true;
             Serial.println("Color found");
         }

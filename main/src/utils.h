@@ -87,43 +87,45 @@ bool isBuzzerTaskIdle(BuzzerTask *task)
     return task->state == IDLE;
 }
 
-void loopAutomatic(unsigned long currentMillis)
-{
-    if (color_detected && !turning)
-    {
-        // tracking = false;
-        currentBuzzerTask = &beat1;
-        startBuzzerTask(&beat1, currentMillis);
-        target_angle = yaw + 1.57;
-        turning = true;
-    }
+// void loopAutomatic(unsigned long currentMillis)
+// {
+//     if (color_detected && !turning)
+//     {
+//         // tracking = false;
+//         target_velocity = 0;
+//         // target_angle = yaw + 1.57;
+//         turning = true;
+//     }
 
-    if ((target_angle - yaw < 0.05 && target_angle - yaw > -0.05) && (gyro_x < 0.05 && gyro_x > -0.05) && color_detected) // robot might move, so color_detected might turn to false
-    {
-        // buzzer
-        // startBuzzerTask(&beat1, currentMillis);
-        color_detected = false;
-        turning = false;
-        back_to_track = true;
-    }
+//     if ((target_angle - yaw < 0.05 && target_angle - yaw > -0.05) && (gyro_x < 0.05 && gyro_x > -0.05) && color_detected) // robot might move, so color_detected might turn to false
+//     {
+//         // buzzer
+//         currentBuzzerTask = &beat1;
+//         startBuzzerTask(&beat1, currentMillis);
+//         color_detected = false;
+//         turning = false;
+//         back_to_track = true;
+//     }
 
-    if (back_to_track && !turning && isBuzzerTaskIdle(&beat1))
-    {
-        currentBuzzerTask = &alarm1;
-        startBuzzerTask(&alarm1, currentMillis);
-        target_angle = yaw - 1.57;
-        turning = true;
-    }
+//     if (back_to_track && !turning && isBuzzerTaskIdle(&beat1))
+//     {
+//         // target_angle = yaw - 1.57;
+//         turning = true;
+//     }
 
-    if ((target_angle - yaw < 0.05 && target_angle - yaw > -0.05) && (gyro_x < 0.05 && gyro_x > -0.05) && back_to_track)
-    {
-        // tracking = true;
-        back_to_track = false;
-        turning = false;
-    }
-}
+//     if ((target_angle - yaw < 0.05 && target_angle - yaw > -0.05) && (gyro_x < 0.05 && gyro_x > -0.05) && back_to_track)
+//     {
+//         // tracking = true;
+//         target_velocity = 1.3;
+//         back_to_track = false;
+//         turning = false;
+//     }
+// }
 
-void loopManual()
+void
+
+    void
+    loopManual()
 {
     if (isForward)
     {
@@ -322,12 +324,8 @@ void controlLoop()
         if (currentMillis > printTimer)
         {
             printTimer += PRINT_INTERVAL;
-            // Serial.print("pitch: ");
-            // Serial.println(pitch);
-            Serial.print("yaw: ");
-            Serial.println(yaw);
-            Serial.print("target_angle:");
-            Serial.println(target_angle);
+            Serial.print("pitch: ");
+            Serial.println(pitch);
         }
     }
 }
