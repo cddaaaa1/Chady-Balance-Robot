@@ -1,16 +1,16 @@
 from flask import Flask, request, jsonify
 import requests
 import numpy as np
-#import cv2
-#from picamera2 import Picamera2
-#from time import sleep, time
+import cv2
+from picamera2 import Picamera2
+from time import sleep, time
 import time
 import threading
 import spidev
 import RPi.GPIO as GPIO
 import os
 
-ESP32_IP = '172.20.10.2'  # Replace with your ESP32 IP
+ESP32_IP = '172.20.10.10'  # Replace with your ESP32 IP
 ESP32_PORT = 80  # HTTP server default port
 
 current_color = None
@@ -25,9 +25,9 @@ clk_pin = 11  # GPIO11 (Pin 23 on the Raspberry Pi) - Serial Clock (SCK)
 
 # Define MCP3208 channels for each terminal
 VOM_CHANNEL = 1
-VOL_CHANNEL = 3
+VOL_CHANNEL = 2
 VB_CHANNEL = 0
-VL_CHANNEL = 2
+VL_CHANNEL = 3
 
 # Constants
 MAX_ADC = 5.0
@@ -41,8 +41,7 @@ PD_Vb = 4.0  # Potential divider of Vb
 
 numPoints = 29
 capacity_discharged = [0, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 82.5, 85, 87.5, 90, 92.5, 95, 97.5, 100]
-voltage = [16.8, 16.325, 15.85, 15.6725, 15.53, 15.425, 15.33, 15.2675, 15.22, 15.05, 14.93, 14.835, 14.74, 14.645, 14.575, 14.5275, 14.48, 14.4325, 14.385, 14.3375, 14.29, 14.25, 14.23, 14.1, 14, 13.8, 13.5, 12.9975, 12]
-
+voltage = [16.8, 16.525, 16.25, 16.0725, 15.93, 15.8, 15.63, 15.5275, 15.4, 15.25, 15.13, 15.035, 14.94, 14.845, 14.775, 14.7275, 14.68, 14.6325, 14.585, 14.5375, 14.4, 14.3, 14.2425, 14.15, 13.98, 13.8, 13.6, 12.9975, 10]
 soc = 0  # State of Charge (%)
 lastUpdateTime = 0  # To track time intervals
 accumulatedCharge = 0.0  # mAh
@@ -109,10 +108,10 @@ def send_data_packet(x, y, ip, port):
         print(f"Error sending packet: {e}")
 
 # Initialize Picamera2
-# picam2 = Picamera2()
-# preview_config = picam2.create_preview_configuration()
-# picam2.configure(preview_config)
-# picam2.start()
+picam2 = Picamera2()
+preview_config = picam2.create_preview_configuration()
+picam2.configure(preview_config)
+picam2.start()
 
 def read_voltage(channel):
     if channel < 0 or channel > 7:
@@ -171,9 +170,9 @@ battery_data = BatteryData()
 def battery_monitoring():
     global accumulatedCharge, soc, PM, PL, chargeSoc
     initialVb = 0
-    while initialVb <= 12.8:
+    while initialVb <= 13.0:
         initialVb = read_voltage(VB_CHANNEL) * PD_Vb
-        if initialVb <= 12.8:
+        if initialVb <= 13.0:
             print("Voltage not detected or low battery, retrying....")
             time.sleep(1)
 
@@ -350,6 +349,7 @@ def send_command():
     else:
         return jsonify({'error': 'No command provided'}), 400
 
+
 @app.route('/set_variable', methods=['POST'])
 def set_variable():
     if 'variable' in request.json and 'value' in request.json:
@@ -367,6 +367,7 @@ def set_variable():
 def get_data():
     try:
         response = requests.get(f'http://{ESP32_IP}/data', timeout=5)
+        
         if response.status_code == 200:
             return jsonify(response.json())
         return 'Failed to retrieve data', 500
@@ -396,7 +397,6 @@ def color():
 @app.route('/battery', methods=['GET'])
 def get_battery_data():
     chargeSoc, PM, PL = battery_data.get_data()
-    print(f"Debug: Sending data - SOC: {chargeSoc}, PM: {PM}, PL: {PL}")  
     return jsonify({'chargeSoc': chargeSoc, 'PM': PM, 'PL': PL})
 
 
@@ -414,29 +414,29 @@ def reset_battery():
 
 if __name__ == '__main__':
     # Start the color detection thread
-    # color_thread = threading.Thread(target=color_detection_thread)
-    # color_thread.daemon = True
+    color_thread = threading.Thread(target=color_detection_thread)
+    color_thread.daemon = True
 
-    # # Start the path-finding thread
-    # path_thread = threading.Thread(target=path_finding_thread)
-    # path_thread.daemon = True
+    # Start the path-finding thread
+    path_thread = threading.Thread(target=path_finding_thread)
+    path_thread.daemon = True
 
-    # # Start the battery thread
-    # battery_thread = threading.Thread(target=battery_monitoring)
-    # battery_thread.daemon = True
+    # Start the battery thread
+    battery_thread = threading.Thread(target=battery_monitoring)
+    battery_thread.daemon = True
 
     # Run the Flask server
     server_thread = threading.Thread(target=lambda: app.run(host='0.0.0.0', port=8000))
 
     server_thread.start()
-    #color_thread.start()
-    #path_thread.start()
-    #battery_thread.start()
+    color_thread.start()
+    path_thread.start()
+    battery_thread.start()
 
     server_thread.join()
-    #color_thread.join()
-    #path_thread.join() 
-    #battery_thread.join()
+    color_thread.join()
+    path_thread.join() 
+    battery_thread.join()
 
 
 

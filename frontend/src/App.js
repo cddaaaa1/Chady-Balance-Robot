@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Line } from 'react-chartjs-2';
 import Modal from 'react-modal';
+import logo from './Logo.png';
+
 
 const SERVER_IP = 'http://172.20.10.7:5001';
 
@@ -136,7 +138,7 @@ function App() {
         .then(response => {
           const data = response.data;
           const newTime = new Date().toLocaleTimeString();
-
+  
           setPitchData(prev => {
             const newLabels = [...prev.labels, newTime].slice(-20);
             const newData = [...prev.datasets[0].data, data.pitch].slice(-20);
@@ -146,7 +148,7 @@ function App() {
               datasets: [{ ...prev.datasets[0], data: newData }]
             };
           });
-
+  
           setVelocityData(prev => {
             const newLabels = [...prev.labels, newTime].slice(-20);
             const newData = [...prev.datasets[0].data, data.velocity].slice(-20);
@@ -159,9 +161,10 @@ function App() {
         })
         .catch(error => console.error('Error fetching data:', error));
     }, 1000);
-
+  
     return () => clearInterval(interval);
   }, []);
+  
 
   useEffect(() => {
     const fetchBatteryData = () => {
@@ -273,8 +276,8 @@ function App() {
       .catch(error => {
         console.error('Error sending command:', error);
       });
-  };
-
+  };  
+  
   const sendColor = (color) => {
     axios.post(`${SERVER_IP}/color`, { color }, {
       headers: {
@@ -401,9 +404,12 @@ function App() {
   };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', backgroundColor: '#f4f4f4' }}>
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', backgroundColor: '#f4f4f4', position: 'relative' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Chady Robot</h1>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <h1 style={{ margin: '0 10px 0 0' }}>chady</h1>
+          <img src={logo} alt="Logo" style={{ width: '50px', height: '50px' }} />
+        </div>
         <div style={infoContainerStyle}>
           <div>
             <div>Charge SOC: {batteryData.chargeSoc.toFixed(2)}%</div>
@@ -413,10 +419,6 @@ function App() {
           </div>
           <div>Motor Power: {batteryData.PM.toFixed(2)} W</div>
           <div>Logic Power: {batteryData.PL.toFixed(2)} W</div>
-        </div>
-        <div style={{ marginLeft: '20px' }}>
-          <button onClick={() => resetBattery('reset_to_full')} style={buttonStyle} onMouseEnter={e => e.target.style.backgroundColor = buttonHoverStyle.backgroundColor} onMouseLeave={e => e.target.style.backgroundColor = buttonStyle.backgroundColor} onMouseDown={e => e.target.style.backgroundColor = buttonActiveStyle.backgroundColor} onMouseUp={e => e.target.style.backgroundColor = buttonHoverStyle.backgroundColor}>Reset Battery to Full</button>
-          <button onClick={() => resetBattery('reset_based_on_voltage')} style={buttonStyle} onMouseEnter={e => e.target.style.backgroundColor = buttonHoverStyle.backgroundColor} onMouseLeave={e => e.target.style.backgroundColor = buttonStyle.backgroundColor} onMouseDown={e => e.target.style.backgroundColor = buttonActiveStyle.backgroundColor} onMouseUp={e => e.target.style.backgroundColor = buttonHoverStyle.backgroundColor}>Reset Based on Voltage</button>
         </div>
         <div>
           <button onClick={openModal} style={buttonStyle} onMouseEnter={e => e.target.style.backgroundColor = buttonHoverStyle.backgroundColor} onMouseLeave={e => e.target.style.backgroundColor = buttonStyle.backgroundColor} onMouseDown={e => e.target.style.backgroundColor = buttonActiveStyle.backgroundColor} onMouseUp={e => e.target.style.backgroundColor = buttonHoverStyle.backgroundColor}>Login/Register</button>
@@ -464,6 +466,10 @@ function App() {
         {message && <p style={{ textAlign: 'center', marginTop: '10px' }}>{message}</p>}
       </Modal>
 
+      <div style={{ marginLeft: '20px' }}>
+          <button onClick={() => resetBattery('reset_to_full')} style={buttonStyle} onMouseEnter={e => e.target.style.backgroundColor = buttonHoverStyle.backgroundColor} onMouseLeave={e => e.target.style.backgroundColor = buttonStyle.backgroundColor} onMouseDown={e => e.target.style.backgroundColor = buttonActiveStyle.backgroundColor} onMouseUp={e => e.target.style.backgroundColor = buttonHoverStyle.backgroundColor}>Reset Battery to Full</button>
+          <button onClick={() => resetBattery('reset_based_on_voltage')} style={buttonStyle} onMouseEnter={e => e.target.style.backgroundColor = buttonHoverStyle.backgroundColor} onMouseLeave={e => e.target.style.backgroundColor = buttonStyle.backgroundColor} onMouseDown={e => e.target.style.backgroundColor = buttonActiveStyle.backgroundColor} onMouseUp={e => e.target.style.backgroundColor = buttonHoverStyle.backgroundColor}>Reset Based on Voltage</button>
+        </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between' }}>
         <div style={{ flex: '1 1 30%', marginBottom: '20px', marginRight: '30px' }}>
           <div style={{ ...cardStyle, height: '250px' }}>
