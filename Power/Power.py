@@ -26,8 +26,8 @@ VtoI_logic = 1  # voltage to current ratio
 PD_logic = 2.0  # Potential divider of Vl
 PD_Vb = 4.0  # Potential divider of Vb
 
+#Look up table for soc based on voltage 
 numPoints = 29
-
 capacity_discharged = [0, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 82.5, 85, 87.5, 90, 92.5, 95, 97.5, 100]
 voltage = [16.8, 16.525, 16.25, 16.0725, 15.93, 15.8, 15.63, 15.5275, 15.4, 15.25, 15.13, 15.035, 14.94, 14.845, 14.775, 14.7275, 14.68, 14.6325, 14.585, 14.5375, 14.4, 14.3, 14.2425, 14.15, 13.98, 13.8, 13.6, 12.9975, 10]
 
