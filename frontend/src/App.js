@@ -170,7 +170,7 @@ function App() {
     const fetchBatteryData = () => {
       axios.get(`${SERVER_IP}/battery`)
       .then(response => {
-        console.log("Battery data received:", response.data);  // This should log the actual data received
+        console.log("Battery data received:", response.data); 
         const { chargeSoc, PM, PL } = response.data;
         setBatteryData({ chargeSoc, PM, PL });
       })
@@ -316,10 +316,10 @@ function App() {
   };
 
   const chartContainerStyle = {
-    height: 'calc(100% - 40px)', // Adjust chart container height
+    height: 'calc(100% - 40px)', 
     width: '100%',
     position: 'relative',
-    paddingTop: '5px', // Add spacing between title and chart
+    paddingTop: '5px', 
   };
 
   const buttonStyle = {
@@ -380,27 +380,27 @@ function App() {
   };
 
   const progressContainerStyle = {
-    width: '200px', // Width of the progress bar
-    backgroundColor: '#ddd', // Background of the progress bar
-    borderRadius: '8px', // Rounded corners
-    overflow: 'hidden', // Ensures the inner bar does not overflow
-    marginLeft: '10px', // Add spacing between text and bar
+    width: '200px', 
+    backgroundColor: '#ddd',
+    borderRadius: '8px',
+    overflow: 'hidden', 
+    marginLeft: '10px', 
   };
 
   const progressBarStyle = {
-    height: '20px', // Height of the progress bar
-    backgroundColor: '#4CAF50', // Color of the progress bar
-    textAlign: 'center', // Centers text in the progress bar
-    lineHeight: '20px', // Centers text vertically
-    color: 'white', // Text color
-    width: `${batteryData.chargeSoc}%`, // Dynamic width based on chargeSoc
-    transition: 'width 0.5s ease-in-out', // Smooth transition for the bar growth
+    height: '20px', 
+    backgroundColor: '#4CAF50', 
+    textAlign: 'center', 
+    lineHeight: '20px',
+    color: 'white', 
+    width: `${batteryData.chargeSoc}%`, 
+    transition: 'width 0.5s ease-in-out', 
   };
 
   const infoContainerStyle = {
     display: 'flex',
     alignItems: 'center',
-    gap: '20px', // Adjust gap as needed for spacing
+    gap: '20px', 
   };
 
   return (
