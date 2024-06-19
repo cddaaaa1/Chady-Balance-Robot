@@ -5,10 +5,10 @@ import os
 import threading
 
 # MCP3208 pin connections
-cs_pin = 8  # GPIO8 (Pin 24 on the Raspberry Pi) - Chip Select (SS)
-miso_pin = 9  # GPIO9 (Pin 21 on the Raspberry Pi) - Master In Slave Out (MISO)
-mosi_pin = 10  # GPIO10 (Pin 19 on the Raspberry Pi) - Master Out Slave In (MOSI)
-clk_pin = 11  # GPIO11 (Pin 23 on the Raspberry Pi) - Serial Clock (SCK)
+cs_pin = 8  # Pin 24 on the Raspberry Pi - Chip Select (SS)
+miso_pin = 9  # Pin 21 on the Raspberry Pi - Master In Slave Out (DIN)
+mosi_pin = 10  # Pin 19 on the Raspberry Pi - Master Out Slave In (DOUT)
+clk_pin = 11  # Pin 23 on the Raspberry Pi - Serial Clock (CLK)
 
 # Define MCP3208 channels for each terminal
 VB_CHANNEL = 0
@@ -35,7 +35,7 @@ soc = 0  # State of Charge (%)
 lastUpdateTime = 0  # To track time intervals
 accumulatedCharge = 0.0  # mAh
 BATTERY_CAPACITY = 2000  # Battery capacity in mAh
-CAPACITY_FILE = 'battery_capacity.txt'  # File to store battery capacity
+CAPACITY_FILE = 'battery_capacity.txt'  # File to store acculated charge
 
 # Initialize SPI
 spi = spidev.SpiDev()
@@ -47,7 +47,6 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setup(cs_pin, GPIO.OUT)
 GPIO.output(cs_pin, GPIO.HIGH)
 
-# Lock for thread-safe operations
 lock = threading.Lock()
 
 def read_voltage(channel):
@@ -75,7 +74,7 @@ def voltage_SOC(v_battery):
         if v_battery <= voltage[i] and v_battery > voltage[i + 1]:
             soc = capacity_discharged[i] + (capacity_discharged[i + 1] - capacity_discharged[i]) * (v_battery - voltage[i]) / (voltage[i + 1] - voltage[i])
             return soc
-    return 0  # Should never reach here
+    return 0 
 
 def read_stored_capacity():
     if os.path.exists(CAPACITY_FILE):
@@ -124,7 +123,7 @@ while initialVb <= 13.0:
 
 # Initialize SOC and accumulated charge
 stored_capacity = read_stored_capacity()
-accumulatedCharge = stored_capacity  # Use stored capacity directly
+accumulatedCharge = stored_capacity  # Use stored capacity default
 
 lastUpdateTime = time.time()
 
@@ -134,25 +133,22 @@ try:
         VOM = read_voltage(VOM_CHANNEL)
         VOL = read_voltage(VOL_CHANNEL)
         Vb = read_voltage(VB_CHANNEL) * PD_Vb
-        VM = Vb  # Reuse the value read for VB_CHANNEL
         VL = read_voltage(VL_CHANNEL) * PD_logic
 
         # Calculate currents and power
         IM = VOM * VtoI_motor  # Motor current
+        VM = Vb - R * IM # Motor Voltage
         IL = VOL * VtoI_logic  # Logic current
         PM = IM * VM  # Motor power
         PL = IL * VL  # Logic power
-
-        # Print motor measurements
+        
         print(f"Motor Current: {IM} A, Motor Voltage: {VM} V, Motor Power: {PM} W")
         
-        # Print logic measurements
         print(f"Logic Current: {IL} A, Logic Voltage: {VL} V, Logic Power: {PL} W")
 
-        # Battery measurements
         print(f"Battery Voltage: {Vb} V")
 
-        # Calculate battery parameters
+       
         currentTime = time.time()
         elapsedTime = currentTime - lastUpdateTime
         lastUpdateTime = currentTime
@@ -167,7 +163,8 @@ try:
         print(f"Charge SOC: {chargeSoc}")
     
 
-        time.sleep(1)  # Delay for 1 second before next measurement
+        time.sleep(1)  
+        store_capacity(accumulatedCharge)
 
 except KeyboardInterrupt:
     pass
