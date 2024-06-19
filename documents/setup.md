@@ -18,21 +18,36 @@ Make sure all devices (ESP32, Raspberry Pi, and your local machine) are connecte
 
 2. **Set Up Your PlatformIO Project:**
    - Open Visual Studio Code (VSCode).
-   - Install the PlatformIO extension from the VSCode marketplace.
-   - 
+   - Install the PlatformIO extension from the VSCode marketplace.S
 
-3. **Configure PlatformIO:**
+3. **Configuration:**
+   #### Configure platfromio
    - Open the `platformio.ini` file in the root of your project.
-   - Ensure it has the correct configurations for your ESP32. It should look something like this:
+   - Ensure it has the correct configurations for your ESP32. platformio.ini should look like this:
      ```ini
-     [env:esp32dev]
-     platform = espressif32
-     board = esp32dev
-     framework = arduino
-     monitor_speed = 115200
+     [env:esp32-c3-devkitc-02]
+      platform = espressif32@~5.0.0
+      board = esp32dev
+      framework = arduino
+      lib_deps = 
+	   TimerInterrupt_Generic
+	   adafruit/Adafruit MPU6050@^2.2.4
+	   bblanchon/ArduinoJson @ ^6.18.5
+	   arduino-libraries/NTPClient @ ^3.1.0
+	   https://github.com/me-no-dev/ESPAsyncWebServer.git
+      monitor_speed = 115200
+      ```
+   #### Configure wifi
+   - Open main/src/config.h
+   - Change ssid and password
+     ```ini
+     const char *ssid = "********";
+     const char *password = "********";
      ```
-4. **Build and Upload the Code:**
+
+5. **Build and Upload the Code:**
    - Connect your ESP32 to your computer via USB.
+   - click upload in the Platformio extension window
 
 ## 2. Raspberry Pi Setup
 

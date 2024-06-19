@@ -220,37 +220,27 @@ def color_detection(img, color_name):
     """Detect the specified color in the image and return its percentage."""
     hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     
-    # Create color histogram
     hist = cv2.calcHist([hsv_img], [0, 1], None, [180, 256], [0, 180, 0, 256])
 
-    # Get color threshold
     lower_bound, upper_bound = get_color_threshold(color_name)
 
-    # Create mask
     mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
 
-    # Back project histogram
     dst = cv2.calcBackProject([hsv_img], [0, 1], hist, [0, 180, 0, 256], 1)
 
-    # Apply mask
     res = cv2.bitwise_and(dst, dst, mask=mask)
 
-    # Normalize
     cv2.normalize(res, res, 0, 255, cv2.NORM_MINMAX)
 
-    # Thresholding
     _, thresholded = cv2.threshold(res, 50, 255, 0)
 
-    # Morphological operations
     kernel = np.ones((5, 5), np.uint8)
     opening = cv2.morphologyEx(thresholded, cv2.MORPH_OPEN, kernel, iterations=2)
     closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel, iterations=3)
 
-    # Find contours
     contours, _ = cv2.findContours(closing, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     output = cv2.drawContours(img.copy(), contours, -1, (0, 0, 255), 3)
 
-    # Calculate color percentage
     total_pixels = np.prod(mask.shape[:2])
     color_pixels = cv2.countNonZero(closing)
     color_percentage = (color_pixels / total_pixels) * 100
@@ -291,7 +281,7 @@ def color_detection_thread():
                 except requests.RequestException as e:
                     print(f"Error sending status update to ESP32: {e}")
 
-            time.sleep(0.1)  # Add a short delay to reduce CPU usage
+            time.sleep(0.1)  
 
 def path_finding_thread():
     while True:
@@ -299,7 +289,6 @@ def path_finding_thread():
         gray = np.dot(frame[...,:3], [0.299, 0.587, 0.114])  # Convert to grayscale
         binary = np.where(gray < 60, 255, 0).astype(np.uint8)  # Binarize image
 
-        # Simple line detection algorithm
         lines = []
         for i in range(binary.shape[0]):
             if np.any(binary[i, :]):
@@ -308,7 +297,7 @@ def path_finding_thread():
                 lines.append((i, line_center))
 
         if lines:
-            # Calculate average line position
+            # calculate average line position
             line_y, line_x = zip(*lines)
             avg_x = np.mean(line_x)
             rho_err = avg_x - binary.shape[1] / 2
@@ -318,7 +307,6 @@ def path_finding_thread():
             else:
                 theta_err = 0
 
-            # Reset integral term
             rho_pid.integral = 0
             theta_pid.integral = 0
 
@@ -335,7 +323,7 @@ def path_finding_thread():
             print("No line found.")
             send_data_packet(0, 0, ESP32_IP, ESP32_PORT)
 
-        time.sleep(0.1)  # Control frame rate
+        time.sleep(0.1) 
 
 @app.route('/send_command', methods=['POST'])
 def send_command():
@@ -413,19 +401,18 @@ def reset_battery():
 
 
 if __name__ == '__main__':
-    # Start the color detection thread
+    # color detection thread
     color_thread = threading.Thread(target=color_detection_thread)
     color_thread.daemon = True
 
-    # Start the path-finding thread
+    # path-finding thread
     path_thread = threading.Thread(target=path_finding_thread)
     path_thread.daemon = True
 
-    # Start the battery thread
+    # battery thread
     battery_thread = threading.Thread(target=battery_monitoring)
     battery_thread.daemon = True
 
-    # Run the Flask server
     server_thread = threading.Thread(target=lambda: app.run(host='0.0.0.0', port=8000))
 
     server_thread.start()

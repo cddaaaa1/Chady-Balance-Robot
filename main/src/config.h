@@ -14,7 +14,7 @@
 #define STEPPER1_DIR_PIN 18  // Arduino D6
 #define STEPPER1_STEP_PIN 19 // Arduino D5
 #define STEPPER2_DIR_PIN 4   // Arduino D11
-#define STEPPER2_STEP_PIN 14 // Arduino D12
+#define STEPPER2_STEP_PIN 14 // Arduino D10
 #define STEPPER_EN 15        // Arduino D12
 
 // Diagnostic pin for oscilloscope
@@ -48,7 +48,7 @@ bool back_to_track = false;
 
 // vertical loop
 float pitch;
-float bias = 0.09;
+float bias = 0.04;
 
 // velocity loop
 float velocity1;
@@ -66,20 +66,26 @@ float gyro_x = 0.0;
 float current_yaw = 0.0;
 float previous_yaw = 0.0;
 const bool continue_turning = false;
+float turn_loop_count = 0.0;
 
 // automiac loop
-enum AutoState
+enum RobotState
 {
-    MOVING,
-    TASK,
-
+    MOVING_FORWARD,
+    ULTRSONIC_STOP,
+    STOPPED,
+    TURNING,
+    TURNED,
+    TURNING_BACK,
 };
+
+RobotState currentState = MOVING_FORWARD;
 
 // handle color
 bool color_detected = false;
 
 // tracking trigger
-bool tracking = false;
+bool tracking = true;
 
 // ultrasonic sensor
 
@@ -111,7 +117,7 @@ bool isStop;
 
 // Buzzer
 
-const int buzzerPin = 27; // Arduino A5
+const int buzzerPin = 27; // Arduino A0
 
 #define NOTE_C4 262
 #define NOTE_D4 294

@@ -21,7 +21,7 @@ rho_pid = PID(p=1.1, i=0.6, d=0.08)
 theta_pid = PID(p=0.001, i=0.1, d=0.01)
 
 def send_data_packet(x, y):
-    # 在这里可以添加具体的发送数据包的代码，如通过串口或网络发送
+    # adding codes to send packets to esp32
     print(f"Sending packet with x: {x}, y: {y}")
 
 picam2 = Picamera2()
@@ -31,10 +31,10 @@ picam2.start()
 
 while True:
     frame = picam2.capture_array()
-    gray = np.dot(frame[...,:3], [0.299, 0.587, 0.114])  # 转换为灰度图像
-    binary = np.where(gray < 60, 255, 0).astype(np.uint8)  # 二值化图像
+    gray = np.dot(frame[...,:3], [0.299, 0.587, 0.114])  # turn into grayscale
+    binary = np.where(gray < 60, 255, 0).astype(np.uint8)  # turn to black and white image
 
-    # 简单的线检测算法
+    # simple line tracking algorithm
     lines = []
     for i in range(binary.shape[0]):
         if np.any(binary[i, :]):
@@ -43,7 +43,7 @@ while True:
             lines.append((i, line_center))
 
     if lines:
-        # 计算线的平均位置
+        # calculate the mean
         line_y, line_x = zip(*lines)
         avg_x = np.mean(line_x)
         rho_err = avg_x - binary.shape[1] / 2
@@ -53,7 +53,7 @@ while True:
         else:
             theta_err = 0
 
-        # 重置积分项
+        # reset integral
         rho_pid.integral = 0
         theta_pid.integral = 0
 
@@ -71,7 +71,7 @@ while True:
         print("No line found.")
         send_data_packet(-1, 0)
 
-    sleep(0.1)  # 控制帧率
+    sleep(0.1)  # control frequency
 
 
 picam2.stop()
