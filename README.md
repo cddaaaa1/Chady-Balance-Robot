@@ -30,7 +30,6 @@ project-root/
 │   │   ├── Logo.png       # Logo image
 │   ├── package-lock.json  # npm lock file
 │   └── package.json       # npm configuration file for installing
-<<<<<<< HEAD
 ├── sample_code/
 │   ├── power/
 │   └── camera/
