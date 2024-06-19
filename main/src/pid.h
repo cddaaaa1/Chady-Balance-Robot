@@ -3,6 +3,7 @@
 
 #include "config.h"
 
+//pitch angle 
 float titltAngle(sensors_event_t a, sensors_event_t g)
 {
     const float alpha = 0.98;   // Complementary filter coefficient
@@ -29,6 +30,7 @@ float titltAngle(sensors_event_t a, sensors_event_t g)
     return theta;
 }
 
+//yaw angle
 float yawAngle(sensors_event_t a, sensors_event_t g)
 {
     const float alpha_yaw = 0.98;
@@ -64,13 +66,7 @@ float yawAngle(sensors_event_t a, sensors_event_t g)
     return yaw_angle;
 }
 
-// float vertical(float angle_input, float gyro_y)
-// {
-//     static float output;
-//     output = (angle_input - pitch) * vertical_kp - gyro_y * vertical_kd;
-//     return output;
-// }
-
+//vertical loop
 float vertical(float angle_input, float gyro_y)
 {
     float output;
@@ -82,6 +78,7 @@ float vertical(float angle_input, float gyro_y)
     return output;
 }
 
+//velocity loop
 float velocity(float step1_velocity, float step2_velocity)
 {
     static float output;
@@ -112,6 +109,7 @@ float velocity(float step1_velocity, float step2_velocity)
     return output;
 }
 
+//turning loop
 float turn(float gyro_x, float yaw)
 {
     static float output;

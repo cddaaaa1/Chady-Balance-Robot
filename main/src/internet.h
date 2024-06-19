@@ -3,6 +3,7 @@
 
 #include "config.h"
 
+//reset manual control states
 void resetStates()
 {
     isForward = false;
@@ -85,6 +86,7 @@ void handleManualCommand(String command)
     }
 }
 
+// Handle HTTP POST request from web controller
 void handleController(AsyncWebServerRequest *request)
 {
     if (request->hasArg("cmd"))
@@ -115,6 +117,7 @@ void handleController(AsyncWebServerRequest *request)
     }
 }
 
+//handle camera data for tracking
 void handleCamera(AsyncWebServerRequest *request)
 {
     if (request->hasParam("x", true))
@@ -134,6 +137,7 @@ void handleCamera(AsyncWebServerRequest *request)
     request->send(200, "text/plain", "Data received");
 }
 
+//handle color data for door detection
 void handleColor(AsyncWebServerRequest *request)
 {
     if (request->hasArg("ifFound"))
@@ -156,6 +160,7 @@ void handleColor(AsyncWebServerRequest *request)
     }
 }
 
+//handle setting variables
 void handleSetVariable(AsyncWebServerRequest *request)
 {
     if (request->hasArg("cmd"))
@@ -267,6 +272,7 @@ void handleSetVariable(AsyncWebServerRequest *request)
     }
 }
 
+//handle getting variables
 void handleGetVariables(AsyncWebServerRequest *request)
 {
     StaticJsonDocument<500> jsonResponse;
@@ -292,6 +298,7 @@ void handleGetVariables(AsyncWebServerRequest *request)
     request->send(200, "application/json", response);
 }
 
+//handle sending real time data
 void handleData(AsyncWebServerRequest *request)
 {
     uint8_t buffer[12];
@@ -302,6 +309,7 @@ void handleData(AsyncWebServerRequest *request)
     request->send(200, "application/octet-stream", String((char *)buffer, 12));
 }
 
+//setup wifi
 void setupWifi()
 {
     WiFi.begin(ssid, password);
@@ -317,6 +325,7 @@ void setupWifi()
     Serial.println(WiFi.localIP());
 }
 
+//setup server
 void setupServer()
 {
     server.addHandler(&events);

@@ -19,6 +19,7 @@ bool TimerHandler(void *timerNo)
     return true;
 }
 
+// Ultrasonic sensor stop
 bool ultrasonicStop()
 {
     digitalWrite(trigPin, LOW);
@@ -39,7 +40,7 @@ bool ultrasonicStop()
         return false;
     }
 }
-
+\// start Buzzer Task
 void startBuzzerTask(BuzzerTask *task, unsigned long currentMillis)
 {
     currentBuzzerTask = task; // Set the currentBuzzerTask pointer to the provided task
@@ -53,6 +54,7 @@ void startBuzzerTask(BuzzerTask *task, unsigned long currentMillis)
     task->lastUpdateTime = currentMillis;
 }
 
+// non blocking Update the buzzer task
 void updateBuzzerTask(BuzzerTask *task, unsigned long currentMillis)
 {
     if (task->state == IDLE)
@@ -87,50 +89,19 @@ void updateBuzzerTask(BuzzerTask *task, unsigned long currentMillis)
     }
 }
 
+// Check if the buzzer task is idle
 bool isBuzzerTaskIdle(BuzzerTask *task)
 {
     return task->state == IDLE;
 }
 
+// Reset the buzzer task to idle
 void resetBuzzerToIdle(BuzzerTask *task)
 {
     task->state == IDLE;
 }
 
-// void loopAutomatic(unsigned long currentMillis)
-// {
-//     if (color_detected)
-//     {
-//         // tracking = false;
-//         Serial.println("yes");
-//         target_velocity = 0;
-//         // target_angle = yaw + 1.57;
-//         turning = true;
-//     }
-
-//     if ((target_angle - yaw < 0.05 && target_angle - yaw > -0.05) && (gyro_x < 0.05 && gyro_x > -0.05) && color_detected) // robot might move, so color_detected might turn to false
-//     {
-//         // buzzer
-//         color_detected = false;
-//         turning = false;
-//         back_to_track = true;
-//     }
-
-//     if (back_to_track && !turning && isBuzzerTaskIdle(&beat1))
-//     {
-//         // target_angle = yaw - 1.57;
-//         turning = true;
-//     }
-
-//     if ((target_angle - yaw < 0.05 && target_angle - yaw > -0.05) && (gyro_x < 0.05 && gyro_x > -0.05) && back_to_track)
-//     {
-//         // tracking = true;
-//         target_velocity = 1.3;
-//         back_to_track = false;
-//         turning = false;
-//     }
-// }
-
+//if the pitch angle is stable
 bool ifPitchStable()
 {
     bool pitch_angle_stable = target_velocity - velocity1 < 0.3 && target_velocity - velocity1 > -0.3 && gyro_y < 0.1;
@@ -138,6 +109,7 @@ bool ifPitchStable()
     return pitch_angle_stable;
 }
 
+//if the yaw angle is stable
 bool ifYawStable()
 {
     bool yaw_angle_stable = (target_angle - yaw) < 0.05 && (target_angle - yaw) > -0.05 && gyro_x < 0.1;
@@ -325,13 +297,17 @@ void controlLoop()
         sensors_event_t a, g, temp;
         mpu.getEvent(&a, &g, &temp);
         pitch = titltAngle(a, g);
+
+        //turning loop
         yaw = yawAngle(a, g);
         turn_output = turn(g.gyro.x, yaw);
 
-        if (currentMillis > loopTimer_outter)
+        if (currentMillis > loopTimer_outter)// velocity loop timer
         {
             loopTimer_outter += LOOP_INTERVAL_OUTER;
-            // stop_flag = ultrasonicStop();
+
+            //ultrasonic stop
+            stop_flag = ultrasonicStop();
             if (stop_flag)
             {
                 if (!ultrasonic_flag)
@@ -341,7 +317,6 @@ void controlLoop()
                     Serial.println("alarm1");
                     ultrasonic_flag = true;
                 }
-                // Serial.println("enter");
                 target_velocity = 0;
             }
             else if (ultrasonic_flag)
@@ -351,14 +326,17 @@ void controlLoop()
                 ultrasonic_flag = false;
                 Serial.println("out");
             }
-
+            
+            //velocity loop
             velocity1 = step1.getSpeedRad();
             velcoity2 = step2.getSpeedRad();
             velocity_output = velocity(velocity1, velcoity2);
         }
 
+        //vertical loop
         vertical_output = vertical(bias + velocity_output, g.gyro.y);
-
+        
+        //action on motor
         acc_input1 = vertical_output + turn_output;
         acc_input2 = vertical_output - turn_output;
 
@@ -393,14 +371,6 @@ void controlLoop()
                 step1.setTargetSpeedRad(20);
                 step2.setTargetSpeedRad(-20);
             }
-        }
-        // test for action
-
-        if (currentMillis > printTimer)
-        {
-            printTimer += PRINT_INTERVAL;
-            Serial.print("currentState");
-            Serial.println(currentState);
         }
     }
 }
