@@ -185,10 +185,10 @@ def battery_monitoring():
             VOM = read_voltage(VOM_CHANNEL)
             VOL = read_voltage(VOL_CHANNEL)
             Vb = read_voltage(VB_CHANNEL) * PD_Vb
-            VM = Vb  # Reuse the value read for VB_CHANNEL
             VL = read_voltage(VL_CHANNEL) * PD_logic
 
             IM = VOM * VtoI_motor  # Motor current
+            VM = Vb - R * IM #Motor voltage from battery voltage
             IL = VOL * VtoI_logic  # Logic current
             PM = IM * VM  # Motor power
             PL = IL * VL  # Logic power

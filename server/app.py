@@ -30,12 +30,6 @@ class User(db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
 
-class PowerUsage(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), nullable=False)
-    charge_soc = db.Column(db.Float, nullable=False)
-    timestamp = db.Column(db.DateTime, server_default=db.func.now())
-
 with app.app_context():
     db.create_all()
 
