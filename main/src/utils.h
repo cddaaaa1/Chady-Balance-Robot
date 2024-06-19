@@ -314,21 +314,13 @@ void controlLoop()
             break;
         }
 
+        // handle ultrasonic stop in low frequency
         stop_flag = ultrasonicStop();
     }
 
     if (currentMillis > loopTimer_inner)
     {
         loopTimer_inner += LOOP_INTERVAL_INNER;
-        // static unsigned long previous = 0;
-        // unsigned long currents = millis();
-        // unsigned long loopTime = currents - previous;
-        // previous = currents;
-        // if (loopTime > 50)
-        // {
-        //     Serial.print("Loop time: ");
-        //     Serial.println(loopTime);
-        // }
 
         sensors_event_t a, g, temp;
         mpu.getEvent(&a, &g, &temp);
