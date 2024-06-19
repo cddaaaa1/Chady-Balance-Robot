@@ -1,23 +1,23 @@
 from picamera2 import Picamera2
 import numpy as np
 
-# 初始化 Picamera2
+# initialize Picamera2
 picam2 = Picamera2()
 preview_config = picam2.create_preview_configuration()
 picam2.configure(preview_config)
 picam2.start()
 
-# 红色阈值设定
+# red threshold
 RED_MIN = (100, 20, 20)
 RED_MAX = (255, 100, 100)
 
 def is_red(pixel):
-    """检查一个像素是否为红色"""
+    """check whether red object exists"""
     r, g, b = pixel
     return r >= RED_MIN[0] and g <= RED_MAX[1] and b <= RED_MAX[2]
 
 def find_max_blob(frame):
-    """找到最大的红色区域，并返回其中心坐标和面积"""
+    """find the largest """
     red_points = np.where(np.all((frame >= RED_MIN) & (frame <= RED_MAX), axis=-1))
     if red_points[0].size > 0:
         y_center = np.mean(red_points[0])
