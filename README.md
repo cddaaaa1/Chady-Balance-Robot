@@ -6,7 +6,7 @@
 This two-wheeled service robot is capable of running through unsupervised hotel corridors and delivering food and other items directly to target guests’ rooms. The robot tracks the black line on the floor and uses the camera to detect the room door. Once it reaches the door, the buzzer plays a beat to inform the guests that the service has arrived. An ultrasonic collision avoidance unit allows the robot to detect obstacles and stop to prevent collisions. A Web interface has been implemented to monitor the robot’s dynamic status, battery status, and real-time power consumption. Additionally, the Web interface allows human workers to manually control the robot when needed.
 
 ## Installation
-The setup instruction is included in the 'documents' folder. Please refer to the setup.md file for detailed steps on how to set up the project.
+The setup instruction is included in the 'documents' folder. Please refer to the [setup.md](documents/setup.md) file for detailed steps on how to set up the project.
 
 ## Project Folder Structure
 
@@ -44,7 +44,7 @@ project-root/
 │   └── buzzer/
 ├── esp32 for web testing  # testing tool for esp32
 ├── documents/             # setup instruction
-│   ├── setup
+│   ├── setup.md
 │   └── robot.jpg
 ├── README.md                     
 ```
