@@ -25,6 +25,13 @@ project-root/
 │   │   ├── Logo.png       # Logo image
 │   ├── package-lock.json  # npm lock file
 │   └── package.json       # npm configuration file for installing
-├── README.md          
-└── .gitignore           
+├── sample_code/
+│   ├── power/
+│   └── camera/
+│   └── buzzer/
+├── testing_tool/
+│   ├── power/
+│   └── camera/
+│   └── buzzer/
+├── README.md                     
 ```
