@@ -41,14 +41,15 @@ float turn_kp = -0.5; // 1
 float turn_kd = -1;   // 2
 float turn_speed = 0.0;
 float turn_direction = 0.0;
-float camera_kp = 0.000015;
-float camera_kd = -0.5;
+float camera_kp = 0.02;
+float camera_kd = 0.0;
 bool turning = false;
 bool back_to_track = false;
 
 // vertical loop
 float pitch;
-float bias = 0.04;
+float bias = 0.12;
+float gyro_y;
 
 // velocity loop
 float velocity1;
@@ -95,7 +96,7 @@ bool ultrasonic_flag = false;
 bool stop_flag = false;
 
 // Motion target values
-float target_velocity = -1.3;
+float target_velocity = -1;
 float last_target_velocity = 0;
 float target_angle = 0.0;
 
@@ -103,6 +104,7 @@ float target_angle = 0.0;
 enum Mode
 {
     AUTOMATIC,
+    AUTOTOMANUAL,
     MANUAL,
     STOP
 };
@@ -117,7 +119,7 @@ bool isStop;
 
 // Buzzer
 
-const int buzzerPin = 27; // Arduino A0
+const int buzzerPin = 33; // Arduino A3
 
 #define NOTE_C4 262
 #define NOTE_D4 294

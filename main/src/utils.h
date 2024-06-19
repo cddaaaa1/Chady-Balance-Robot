@@ -19,31 +19,26 @@ bool TimerHandler(void *timerNo)
     return true;
 }
 
-// bool ultrasonicStop()
-// {
-//     digitalWrite(trigPin, LOW);
-//     delayMicroseconds(2);
-//     digitalWrite(trigPin, HIGH);
-//     last_pulse_time = micros();
-//     delayMicroseconds(10);
-//     digitalWrite(trigPin, LOW);
-//     if (digitalRead(echoPin) == true)
-//     {
-//         currentMicro = micros();
-//         duration = currentMicro - last_pulse_time;
-//     }
+bool ultrasonicStop()
+{
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+    duration = pulseIn(echoPin, HIGH);
+    distance = duration * 0.034 / 2;
+    // Serial.println(distance);
+    if (distance < 15)
+    {
 
-//     distance = duration * 0.034 / 2;
-
-//     if (distance < 10)
-//     {
-//         return true;
-//     }
-//     else
-//     {
-//         return false;
-//     }
-// }
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
 
 void startBuzzerTask(BuzzerTask *task, unsigned long currentMillis)
 {
@@ -69,7 +64,9 @@ void updateBuzzerTask(BuzzerTask *task, unsigned long currentMillis)
     {
         if (currentMillis - task->lastUpdateTime >= task->noteDurations[task->currentNote] * 150)
         {
+            Serial.println("playing");
             tone(buzzerPin, task->melody[task->currentNote], 150);
+            // tone(buzzerPin, 400);
             task->lastUpdateTime = currentMillis;
             task->currentNote++;
 
@@ -134,13 +131,29 @@ void resetBuzzerToIdle(BuzzerTask *task)
 //     }
 // }
 
+bool ifPitchStable()
+{
+    bool pitch_angle_stable = target_velocity - velocity1 < 0.3 && target_velocity - velocity1 > -0.3 && gyro_y < 0.1;
+
+    return pitch_angle_stable;
+}
+
+bool ifYawStable()
+{
+    bool yaw_angle_stable = (target_angle - yaw) < 0.05 && (target_angle - yaw) > -0.05 && gyro_x < 0.1;
+
+    return yaw_angle_stable;
+}
+
 void loopAutomatic(unsigned long currentMillis)
 {
     switch (currentState)
     {
     case MOVING_FORWARD:
-        tracking = true;
-        target_velocity = -1.3;
+        tracking = false;
+
+        target_velocity = -1.5;
+
         if (color_detected)
         {
             color_detected = false;
@@ -152,18 +165,20 @@ void loopAutomatic(unsigned long currentMillis)
     case STOPPED:
         // Code to stop the robot
         // buzzer
-        startBuzzerTask(&beat1, currentMillis);
+        // startBuzzerTask(&beat1, currentMillis);
         currentState = TURNING;
+        // target_angle = 1.57;
+
         break;
 
     case TURNING:
         // Code to turn the robot 90 degrees
         currentState = TURNED;
+        startBuzzerTask(&beat1, currentMillis);
         break;
 
     case TURNED:
         // currentBuzzerTask = &beat1;
-        // startBuzzerTask(&beat1, currentMillis);
         if (isBuzzerTaskIdle(currentBuzzerTask))
         {
             currentBuzzerTask = nullptr;
@@ -186,29 +201,27 @@ void loopManual()
 {
     if (isForward)
     {
-        target_velocity = -1.3;
+        target_velocity = -1.5;
         isForward = false;
     }
     else if (isBackward)
     {
-        target_velocity = 1.3;
+        target_velocity = 1.5;
         isBackward = false;
     }
     else if (isStop)
     {
         target_velocity = 0;
-        // target_angle = yaw;
+        target_angle = yaw;
         isStop = false;
     }
     else if (isLeft)
     {
-        target_angle = yaw + 1;
-        isLeft = false;
+        target_angle = yaw + 0.5;
     }
     else if (isRight)
     {
-        target_angle = yaw - 1;
-        isRight = false;
+        target_angle = yaw - 0.5;
     }
 }
 
@@ -290,24 +303,32 @@ void controlLoop()
             // digitalWrite(STEPPER_EN, false);
             loopAutomatic(currentMillis);
             break;
-        case MANUAL:
+
+        case AUTOTOMANUAL:
             setupManual();
+            currentMode = MANUAL;
+            break;
+
+        case MANUAL:
             loopManual();
+            break;
         }
+
+        stop_flag = ultrasonicStop();
     }
 
     if (currentMillis > loopTimer_inner)
     {
         loopTimer_inner += LOOP_INTERVAL_INNER;
-        static unsigned long previous = 0;
-        unsigned long currents = millis();
-        unsigned long loopTime = currents - previous;
-        previous = currents;
-        if (loopTime > 50)
-        {
-            Serial.print("Loop time: ");
-            Serial.println(loopTime);
-        }
+        // static unsigned long previous = 0;
+        // unsigned long currents = millis();
+        // unsigned long loopTime = currents - previous;
+        // previous = currents;
+        // if (loopTime > 50)
+        // {
+        //     Serial.print("Loop time: ");
+        //     Serial.println(loopTime);
+        // }
 
         sensors_event_t a, g, temp;
         mpu.getEvent(&a, &g, &temp);
@@ -319,23 +340,25 @@ void controlLoop()
         {
             loopTimer_outter += LOOP_INTERVAL_OUTER;
             // stop_flag = ultrasonicStop();
-            // if (stop_flag)
-            // {
-            //     if (!ultrasonic_flag)
-            //     {
-            //         last_target_velocity = target_velocity;
-            //         startBuzzerTask(&alarm1, currentMillis);
-            //         Serial.println("alarm1");
-            //         ultrasonic_flag = true;
-            //     }
-            //     target_velocity = 0;
-            // }
-            // else if (ultrasonic_flag)
-            // {
-            //     currentBuzzerTask = nullptr;
-            //     target_velocity = last_target_velocity;
-            //     ultrasonic_flag = false;
-            // }
+            if (stop_flag)
+            {
+                if (!ultrasonic_flag)
+                {
+                    last_target_velocity = target_velocity;
+                    startBuzzerTask(&alarm1, currentMillis);
+                    Serial.println("alarm1");
+                    ultrasonic_flag = true;
+                }
+                // Serial.println("enter");
+                target_velocity = 0;
+            }
+            else if (ultrasonic_flag)
+            {
+                currentBuzzerTask = nullptr;
+                target_velocity = last_target_velocity;
+                ultrasonic_flag = false;
+                Serial.println("out");
+            }
 
             velocity1 = step1.getSpeedRad();
             velcoity2 = step2.getSpeedRad();
@@ -384,9 +407,8 @@ void controlLoop()
         if (currentMillis > printTimer)
         {
             printTimer += PRINT_INTERVAL;
-            // Serial.print("pitch: ");
-            Serial.println(pitch);
-            // Serial.println(color_detected);
+            Serial.print("currentState");
+            Serial.println(currentState);
         }
     }
 }

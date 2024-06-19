@@ -21,13 +21,14 @@ void switchToAutomatic()
 void setupManual()
 {
     target_velocity = 0;
-    // target_angle = yaw;
+    tracking = false;
+    target_angle = yaw;
 }
 
 void switchToManual()
 {
     resetStates();
-    currentMode = MANUAL;
+    currentMode = AUTOTOMANUAL;
     Serial.println("Switched to Manual Mode");
     setupManual();
 }
@@ -205,7 +206,6 @@ void handleSetVariable(AsyncWebServerRequest *request)
             else if (varName == "target_angle")
             {
                 target_angle = varValue;
-
             }
             else if (varName == "bias")
             {

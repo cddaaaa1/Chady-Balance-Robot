@@ -11,13 +11,20 @@ float titltAngle(sensors_event_t a, sensors_event_t g)
     static float theta_g = 0.0; // angle measured by gyroscope
 
     // Calculate the angle from accelerometer data
-    theta_a = atan(a.acceleration.z / a.acceleration.x);
+    if (!(isnan(a.acceleration.x) || isnan(a.acceleration.y) || isnan(a.acceleration.z)))
+    {
 
-    // Calculate the angle change from gyroscope data
-    theta_g = g.gyro.y * (LOOP_INTERVAL_INNER / 1000); // adjust dt into second
+        theta_a = atan(a.acceleration.z / a.acceleration.x);
+        // Calculate the angle change from gyroscope data
+        theta_g = g.gyro.y * (LOOP_INTERVAL_INNER / 1000); // adjust dt into second
 
-    // Complementary filter to combine accelerometer and gyroscope data
-    theta = (alpha * (theta + theta_g)) + ((1 - alpha) * theta_a);
+        // Complementary filter to combine accelerometer and gyroscope data
+        theta = (alpha * (theta + theta_g)) + ((1 - alpha) * theta_a);
+    }
+    else
+    {
+        Serial.println("MPU reading error");
+    }
 
     return theta;
 }
@@ -108,10 +115,12 @@ float velocity(float step1_velocity, float step2_velocity)
 float turn(float gyro_x, float yaw)
 {
     static float output;
-    if (false)
+    if (tracking)
     {
         //  tracking
         output = (cam_rho + cam_theta) * camera_kp + gyro_x * camera_kd;
+        cam_rho = 0;
+        cam_theta = 0;
     }
     else
     {
@@ -121,6 +130,16 @@ float turn(float gyro_x, float yaw)
         }
         else
         {
+            // if (target_angle - yaw > 0.5 && turn_loop_count < 10)
+            // {
+            //     turn_kp = -2;
+            //     turn_loop_count++;
+            // }
+            // else
+            // {
+            //     turn_kp = -0.5;
+            //     turn_loop_count = 0;
+            // }
             output = (target_angle - yaw) * turn_kp - gyro_x * turn_kd;
         }
     }
