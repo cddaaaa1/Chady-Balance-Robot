@@ -44,7 +44,12 @@ Make sure all devices (ESP32, Raspberry Pi, and your local machine) are connecte
      const char *ssid = "********";
      const char *password = "********";
      ```
-
+   #### Configure bias 
+   - Open main/src/config.h 
+   - Change bias 
+     ```ini 
+     float bias=0.08;
+     ```
 5. **Build and Upload the Code:**
    - Connect your ESP32 to your computer via USB.
    - click upload in the Platformio extension window

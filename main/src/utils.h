@@ -40,7 +40,7 @@ bool ultrasonicStop()
         return false;
     }
 }
-\// start Buzzer Task
+// start Buzzer Task
 void startBuzzerTask(BuzzerTask *task, unsigned long currentMillis)
 {
     currentBuzzerTask = task; // Set the currentBuzzerTask pointer to the provided task
