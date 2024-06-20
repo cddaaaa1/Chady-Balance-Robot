@@ -8,25 +8,18 @@ This two-wheeled service robot is capable of running through unsupervised hotel 
 ## Installation
 The setup instruction is included in the 'documents' folder. Please refer to the [setup.md](documents/setup.md) file for detailed steps on how to set up the project.
 
+## Demostration video for individual functions
+Successful videos for different functions can be found in [Videos](documents/videos/), details are stated in the name for each one.
+
 ## Project Folder Structure
 
 ```plaintext
-project-root/
-├── esp32/
-│   ├── src/
-|   |   ├── config.h       # Global variables and setup
-|   |   ├── internet.h     # Internet functions 
-|   |   ├── pid.h          # PID control functions
-|   |   ├── step.h         # Stepper motor functions
-|   |   ├── utils.h        # Utility functions
-│   │   └── main.cpp       # Main loop
-│   └── platformio.ini     # PlatformIO configuration file
-├── raspi/
-│   ├── all.py             # File running on Raspberry Pi
-│   └── requirements.txt   # Python dependencies for Raspberry Pi
-├── server/
-│   ├── app.py             # File running on the server
-│   └── requirements.txt   # Python dependencies for the server
+chady-Balance-Robot/
+├── documents/             # setup instruction
+│   ├── setup.md
+│   ├── robot.jpg
+│   └── videos             # recordings
+├── esp32 for web testing  # testing tool for esp32
 ├── frontend/
 │   ├── node_modules/      # Directory for installed Node.js modules
 │   ├── public/
@@ -38,13 +31,25 @@ project-root/
 │   │   ├── Logo.png      
 │   ├── package-lock.json  # npm lock file
 │   └── package.json       # npm configuration file for installing
-├── sample_code/           # indepent parts for each function
+├── main/
+│   ├── src/
+│   │   ├── config.h       # Global variables and setup
+│   │   ├── internet.h     # Internet functions 
+│   │   ├── pid.h          # PID control functions
+│   │   ├── step.h         # Stepper motor functions
+│   │   ├── utils.h        # Utility functions
+│   │   └── main.cpp       # Main loop
+│   └── platformio.ini     # PlatformIO configuration file
+├── raspi/
+│   ├── all.py             # File running on Raspberry Pi
+│   └── requirements.txt   # Python dependencies for Raspberry Pi
+├── sample_code/           # independent parts for each function
 │   ├── power/
-│   └── camera/
+│   ├── camera/
 │   └── buzzer/
-├── esp32 for web testing  # testing tool for esp32
-├── documents/             # setup instruction
-│   ├── setup.md
-│   └── robot.jpg
-├── README.md                     
+├── server/
+│   ├── app.py             # File running on the server
+│   └── requirements.txt   # Python dependencies for the server
+├── .gitattributes         # git configuration file
+└── README.md               
 ```
